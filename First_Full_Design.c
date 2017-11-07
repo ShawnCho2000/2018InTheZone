@@ -29,6 +29,16 @@
 //Main competition background code...do not modify!
 #include "Vex_Competition_Includes.c"
 
+const int MAX_CLAWLIFT = 3300;
+const int MIN_CLAWLIFT = 1850;
+const int MAX_MOBILELIFT = 2100;
+const int MIN_LIFT = 230;
+const int MAX_LIFT = 1600;
+
+const int FEED_LIFT = 720;
+const int FEED_CLAWLIFT = 2200;
+
+
 // ---------------------------------------
 // TASKS
 task move();
@@ -45,14 +55,16 @@ void moveLiftUp(int power);
 void moveLiftDown(int power);
 
 int getClawLiftPosition();
-
+void moveLiftUpToConeHeightAndHold(int power);
 void moveLiftUpToConeHeightAndStop(int power);
 void moveLiftDownToConeHeightAndStop(int power);
-// void moveLiftUpAndStop(int distance, int power);
+void moveLiftUpAndStop(int distance, int power);
 void moveLiftDownAndStop(int distance, int power);
 
 // CLAW LIFT
 void moveClawLift(int power);
+void moveClawLiftUp(int power);
+void moveClawLiftDown(int power);
 void moveClawLiftUpAndStop(int distance, int power);
 void moveClawLiftDownAndStop(int distance, int power);
 
@@ -65,13 +77,19 @@ void closeClaw(int power);
 void moveMobileLift(int power);
 void moveMobileLiftUp(int power);
 void moveMobileLiftDown(int power);
-void moveMobileLiftUpAndStop(int distance, int power);
-void moveMobileLiftDownAndStop(int distance, int power);
-void moveMobileLiftDownToRelease();
+void moveMobileLiftUpAndStop();
+void moveMobileLiftDownAndStop();
+
 
 // MACRO
+void moveMobileLiftUpToStack(int powerLift, int distanceClawLift, int powerClawLift);
+void moveMobileLiftDownToRelease(int powerLift, int distanceClawLift, int powerClawLift);
 void moveLiftUpToConeHeightAndRelease(int powerLift, int distanceClawLift, int powerClawLift);
-void moveClawLiftDownAndPickUp(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift);
+void moveLiftDownAndPickUp(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift);
+
+void moveLiftDownAndPkcUpForFeed(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift);
+void moveLiftToMax(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift);
+
 
 // void moveLiftUpAndRelease(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift);
 
@@ -79,6 +97,7 @@ void moveClawLiftDownAndPickUp(int distanceLift, int powerLift, int distanceClaw
 void dropCone();
 
 void stopAll();
+void stopLift();
 void stopClawLift();
 void stopClaw();
 
@@ -144,8 +163,17 @@ task move()
 {
 	while (true)
 	{
-		motor[wheelLeft] = vexRT[Ch3] + vexRT[Ch1];
-		motor[wheelRight] = -(vexRT[Ch3] - vexRT[Ch1]);
+		int ch1 = vexRT[Ch1];
+		int ch3 = vexRT[Ch3];
+
+		motor[wheelLeft] = ch3 + ch1;
+		motor[wheelRight] = -(ch3 - ch1);
+
+		if (abs(motor[wheelRight]) < 17 || abs(motor[wheelLeft]) < 17)
+		{
+			motor[wheelLeft] = 0;
+			motor[wheelRight] = 0;
+		}
 	}
 }
 
@@ -154,60 +182,72 @@ task lift()
 {
 	const int powerliftUp = 80;
 	const int powerliftDown = 40;
-	const int powerClawLiftUp = 80;
-	const int powerClawLiftDown = 80;
+	const int powerClawLiftUp = 60;
+	const int powerClawLiftDown = 60;
 	const int powerMobileLift = 120;
 
 	while (true)
 	{
 		if (vexRT[Btn8R] == 1) {
 			if (vexRT[Btn7U] == 1) { //Move Lift up with btn 7U
-				moveLift(powerliftUp); //80
-				if (vexRT[Btn7U] == 0) {
-					moveLift(5); //holding power
-				}
+				moveLiftUp(powerliftUp); //80
+				// if (vexRT[Btn7U] == 0) {
+				// 	moveLiftUp(5); //holding power
+				// }
 			}
 			else if (vexRT[Btn7D] == 1){ //Move Lift down with btn 7D
-				moveLift(-40); //-40
-				if (vexRT[Btn7D] == 0) {
-					moveLift(-15); //holding power
-				}
+				moveLiftDown(powerliftDown); //-40
+				// if (vexRT[Btn7D] == 0) {
+				// 	moveLiftDown(15); //holding power
+				// }
 			}
 			else if (vexRT[Btn5U] == 1){
-				moveClawLift(powerClawLiftUp);
+				moveClawLiftUp(powerClawLiftUp / 2);
 			}
 			else if (vexRT[Btn5D] == 1){
-				moveClawLift(powerClawLiftDown);
+				moveClawLiftDown(powerClawLiftDown / 2);
 			}
-			else if (vexRT[Btn5D] == 0 && vexRT[Btn5D] == 0){
+
+			if (vexRT[Btn5U] == 0 && vexRT[Btn5D] == 0){
 				stopClawLift();
+			}
+
+			if (vexRT[Btn7U] == 0 && vexRT[Btn7D] == 0){
+				stopLift();
 			}
 		}
 		else if (vexRT[Btn8R] == 0) {
 			if (vexRT[Btn7U] == 1) {
-				moveLiftUpToConeHeightAndRelease(powerliftUp, 3220, powerClawLiftUp);
+				moveLiftUpToConeHeightAndRelease(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
 			}
 			else if (vexRT[Btn7D] == 1) {
-				moveClawLiftDownAndPickUp(230, powerliftDown, 1900, powerClawLiftDown);
+				moveLiftDownAndPickUp(MIN_LIFT, powerliftDown, MIN_CLAWLIFT, powerClawLiftDown);
 				// moveLiftDownAndStop(230, powerliftDown);
 			}
 			else if (vexRT[Btn5U] == 1){
-				moveClawLiftUpAndStop(3150, powerClawLiftUp);
+				moveClawLiftUpAndStop(MAX_CLAWLIFT, powerClawLiftUp);
 			}
 			else if (vexRT[Btn5D] == 1){
-				moveClawLiftDownAndStop(1900, powerClawLiftDown);
+				moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown);
 			}
 			// else if (vexRT[Btn5U] == 0 && vexRT[Btn5D] == 0){
 			// 	stopClawLift();
 			// }
 			else if (vexRT[Btn7R] == 1){
-				moveMobileLiftDownToRelease();
+				moveMobileLiftDownToRelease(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
 				// moveMobileLiftDownAndStop(750, 80);
 				// moveMobileLiftDown(30);
 			}
 			else if (vexRT[Btn7L] == 1){
-				moveMobileLiftUpAndStop(2100, powerMobileLift);
+				moveMobileLiftUpToStack(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
 				// moveMobileLiftUp(30);
+			}
+			else if (vexRT[Btn8U] == 1){
+				moveLiftToMax(MAX_LIFT, powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
+				// moveLiftUpToConeHeightAndRelease(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
+			}
+			else if (vexRT[Btn8D] == 1){
+				moveLiftDownAndPkcUpForFeed(FEED_LIFT, powerliftDown, FEED_CLAWLIFT, powerClawLiftDown);
 			}
 		}
 
@@ -221,7 +261,7 @@ task claw()
 		if (vexRT[Btn6U] == 1){
 			closeClaw(50);
 			if (vexRT[Btn6U] == 0) {
-				closeClaw(10);
+				closeClaw(40);
 			}
 		}
 		else if (vexRT[Btn6D] == 1){
@@ -269,7 +309,7 @@ task usercontrol()
 
 // -------------------------------------
 // SENSORS
-int getConeHeight()
+int getConeDistance()
 {
 	return SensorValue(coneHeight);
 }
@@ -309,15 +349,30 @@ void stopAll(){
 
 // -------------------------------------
 // LIFT
+void holdLift(){
+	moveLift(10);
+}
+
+
 void stopLift(){
 	moveLift(0);
 }
 
 void moveLiftUp(int power) {
+
+	if (getLiftPosition() >= MAX_LIFT)
+	{
+		return;
+	}
 	moveLift(power);
 }
 
 void moveLiftDown(int power) {
+
+	if (getLiftPosition() <= MIN_LIFT)
+	{
+		return;
+	}
 	moveLift(-power);
 }
 
@@ -330,7 +385,7 @@ void moveLift(int power){
 
 // HELPER
 void moveLiftUpToConeHeightAndRelease(int powerLift, int distanceClawLift, int powerClawLift) {
-	moveLiftUpToConeHeightAndStop(powerLift);
+	moveLiftUpToConeHeightAndHold(powerLift);
 	wait1Msec(200);
 	moveClawLiftUpAndStop(distanceClawLift, powerClawLift);
 	wait1Msec(200);
@@ -342,16 +397,52 @@ void moveLiftUpToConeHeightAndRelease(int powerLift, int distanceClawLift, int p
 	stopClaw();
 }
 
-void moveLiftUpToConeHeightAndStop(int power) {
-	int height = getConeHeight();
-	while (height > 0 && height < 20){
+void moveLiftUpToConeHeightAndHold(int power) {
+	// writeDebugStreamLine("moveLiftUpToConeHeightAndHold) maxHeight: %d", maxHeight);
+
+	moveLiftUp(power);
+	wait1Msec(100);
+
+	int distaince = getConeDistance();
+	// while (distaince > 0 && distaince < 20){
+	while (true){
+		if (distaince > 20 || distaince >= MAX_LIFT)
+		{
+			break;
+		}
+
 		moveLiftUp(power);
 		if (vexRT[Btn8L] == 1)
 		{
 			break;
 		}
 
-		height = getConeHeight();
+		distaince = getConeDistance();
+	}
+
+	writeDebugStreamLine("moveLiftUpToConeHeightAndHold) Cone Distaince: %d", distaince);
+
+	holdLift();
+
+	// wait1Msec(100);
+	// stopLift();
+}
+
+void moveLiftUpToConeHeightAndStop(int power) {
+
+	moveLiftUp(power);
+	wait1Msec(100);
+
+
+	int distaince = getConeDistance();
+	while (distaince > 0 && distaince < 25){
+		moveLiftUp(power);
+		if (vexRT[Btn8L] == 1)
+		{
+			break;
+		}
+
+		distaince = getConeDistance();
 	}
 
 	// wait1Msec(100);
@@ -359,37 +450,70 @@ void moveLiftUpToConeHeightAndStop(int power) {
 }
 
 void moveLiftDownToConeHeightAndStop(int power) {
-	while (getConeHeight() > 20){
+
+	moveLiftDown(power);
+	wait1Msec(100);
+
+	int distaince = getConeDistance();
+	// while (distaince > 20){
+	while (true){
+
+		if (0 < distaince && distaince < 20)
+		{
+			break;
+		}
+
 		moveLiftDown(power);
 		if (vexRT[Btn8L] == 1)
 		{
 			break;
 		}
+
+		distaince = getConeDistance();
 	}
+
+	writeDebugStreamLine("moveLiftDownToConeHeightAndStop) Cone Distaince: %d", distaince);
 
 	// wait1Msec(100);
 	stopLift();
 }
 
-// void moveLiftUpAndStop(int distance, int power) {
+void moveLiftUpAndStop(int distance, int power) {
 
-// 	while (getLiftPosition() < distance){
-// 		moveLiftUp(power);
-// 		if (vexRT[Btn8L] == 1)
-// 		{
-// 			break;
-// 		}
-// 	}
-// 	stopLift();
-// }
+	while (getLiftPosition() < distance){
+		moveLiftUp(power);
+		if (vexRT[Btn8L] == 1)
+		{
+			break;
+		}
+	}
+	stopLift();
+}
 
-void moveClawLiftDownAndPickUp(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift) {
-	moveLiftUpToConeHeightAndStop(powerLift + 10);
+void moveLiftToMax(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift) {
+	moveLiftUpAndStop(distanceLift, powerLift);
+	moveClawLiftUpAndStop(distanceClawLift, powerClawLift);
+}
+
+void moveLiftDownAndPickUp(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift) {
+	moveLiftUpToConeHeightAndHold(powerLift + 10);
 	wait1Msec(200);
 	moveClawLiftDownAndStop(distanceClawLift, powerClawLift);
 	wait1Msec(200);
 	moveLiftDownAndStop(distanceLift, powerLift);
 	wait1Msec(200);
+}
+
+void moveLiftDownAndPkcUpForFeed(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift) {
+	moveLiftUpToConeHeightAndHold(powerLift);
+	wait1Msec(200);
+	moveClawLiftDownAndStop(distanceClawLift + 200, powerClawLift);
+	wait1Msec(200);
+	moveLiftDownAndStop(distanceLift, powerLift / 2);
+	wait1Msec(200);
+	moveLiftUpAndStop(distanceLift, powerLift);
+	wait1Msec(200);
+	moveClawLiftDownAndStop(distanceClawLift - 230, powerClawLift);
 }
 
 void moveLiftDownAndStop(int distance, int power) {
@@ -492,33 +616,41 @@ void moveMobileLift(int power){
 	motor[mobileLift] = power;
 }
 
-void moveMobileLiftUpAndStop(int distance, int power) {
+void moveMobileLiftUpToStack(int powerLift, int distanceClawLift, int powerClawLift) {
+	moveLiftUpAndStop(450, powerLift);
+	wait1Msec(200);
+	moveClawLiftUpAndStop(distanceClawLift, powerClawLift);
+	wait1Msec(200);
+	moveMobileLiftUpAndStop();
+}
 
-	while (getMobileLiftPosition() < distance){
-		moveMobileLiftUp(power);
+void moveMobileLiftUpAndStop() {
+
+	while (getMobileLiftPosition() < MAX_MOBILELIFT){
+		moveMobileLiftUp(120);
 		if (vexRT[Btn8L] == 1)
 		{
 			break;
 		}
 	}
+
 	stopMobileLift();
 }
 
-void moveMobileLiftDownAndStop(int distance, int power) {
+void moveMobileLiftDownToRelease(int powerLift, int distanceClawLift, int powerClawLift) {
+	moveLiftUpToConeHeightAndHold(powerLift);
+	wait1Msec(200);
+	moveLiftUpAndStop(450, powerLift);
+	wait1Msec(200);
 
-	while (getMobileLiftPosition() > distance){
-		moveMobileLiftDown(power);
-		if (vexRT[Btn8L] == 1)
-		{
-			break;
-		}
-	}
-	stopMobileLift();
+	moveClawLiftUpAndStop(distanceClawLift, powerClawLift);
+	wait1Msec(200);
+	moveMobileLiftDownAndStop();
 }
 
-void moveMobileLiftDownToRelease() {
+void moveMobileLiftDownAndStop() {
 
-	while (getMobileLiftPosition() > 2100){
+	while (getMobileLiftPosition() > MAX_MOBILELIFT){
 		moveMobileLiftDown(120);
 		if (vexRT[Btn8L] == 1)
 		{
@@ -533,7 +665,6 @@ void moveMobileLiftDownToRelease() {
 			break;
 		}
 	}
-
 
 	stopMobileLift();
 }
