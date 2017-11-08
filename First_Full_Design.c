@@ -2,7 +2,7 @@
 #pragma config(Sensor, in3,    clawLiftPosition, sensorPotentiometer)
 #pragma config(Sensor, in5,    mobileLiftPosition, sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  coneHeight,     sensorSONAR_cm)
-#pragma config(Motor,  port1,           clawMotor,     tmotorVex393HighSpeed_HBridge, openLoop)
+#pragma config(Motor,  port1,           clawMotor,     tmotorVex393HighSpeed_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           wheelLeft,     tmotorVex393HighSpeed_MC29, openLoop)
 #pragma config(Motor,  port3,           wheelRight,    tmotorVex393HighSpeed_MC29, openLoop)
 #pragma config(Motor,  port4,           clawLiftL,     tmotorVex393HighSpeed_MC29, openLoop)
@@ -30,7 +30,7 @@
 #include "Vex_Competition_Includes.c"
 
 const int MAX_CLAWLIFT = 3300;
-const int MIN_CLAWLIFT = 1850;
+const int MIN_CLAWLIFT = 2200;
 const int MAX_MOBILELIFT = 2100;
 const int MIN_LIFT = 230;
 const int MAX_LIFT = 1600;
@@ -85,7 +85,7 @@ void moveMobileLiftDownAndStop();
 void moveMobileLiftUpToStack(int powerLift, int distanceClawLift, int powerClawLift);
 void moveMobileLiftDownToRelease(int powerLift, int distanceClawLift, int powerClawLift);
 void moveLiftUpToConeHeightAndRelease(int powerLift, int distanceClawLift, int powerClawLift);
-void moveLiftDownAndPickUp(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift);
+void moveLiftDownAndPickUp(int distanceLift,int powerliftUp, int powerliftDown, int distanceClawLift, int powerClawLift);
 
 void moveLiftDownAndPkcUpForFeed(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift);
 void moveLiftToMax(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift);
@@ -163,6 +163,8 @@ task move()
 {
 	while (true)
 	{
+		wait1Msec(50);
+
 		int ch1 = vexRT[Ch1];
 		int ch3 = vexRT[Ch3];
 
@@ -180,14 +182,16 @@ task move()
 
 task lift()
 {
-	const int powerliftUp = 80;
+	const int powerliftUp = 100;
 	const int powerliftDown = 40;
-	const int powerClawLiftUp = 60;
+	const int powerClawLiftUp = 80;
 	const int powerClawLiftDown = 60;
 	const int powerMobileLift = 120;
 
 	while (true)
 	{
+		wait1Msec(50);
+
 		if (vexRT[Btn8R] == 1) {
 			if (vexRT[Btn7U] == 1) { //Move Lift up with btn 7U
 				moveLiftUp(powerliftUp); //80
@@ -202,10 +206,10 @@ task lift()
 				// }
 			}
 			else if (vexRT[Btn5U] == 1){
-				moveClawLiftUp(powerClawLiftUp / 2);
+				moveClawLiftUpAndStop(MAX_CLAWLIFT, powerClawLiftUp);
 			}
 			else if (vexRT[Btn5D] == 1){
-				moveClawLiftDown(powerClawLiftDown / 2);
+				moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown);
 			}
 
 			if (vexRT[Btn5U] == 0 && vexRT[Btn5D] == 0){
@@ -221,14 +225,14 @@ task lift()
 				moveLiftUpToConeHeightAndRelease(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
 			}
 			else if (vexRT[Btn7D] == 1) {
-				moveLiftDownAndPickUp(MIN_LIFT, powerliftDown, MIN_CLAWLIFT, powerClawLiftDown);
+				moveLiftDownAndPickUp(MIN_LIFT, powerliftUp, powerliftDown, MIN_CLAWLIFT, powerClawLiftDown);
 				// moveLiftDownAndStop(230, powerliftDown);
 			}
 			else if (vexRT[Btn5U] == 1){
-				moveClawLiftUpAndStop(MAX_CLAWLIFT, powerClawLiftUp);
+				moveClawLiftUp(powerClawLiftUp / 2);
 			}
 			else if (vexRT[Btn5D] == 1){
-				moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown);
+				moveClawLiftDown(powerClawLiftDown / 2);
 			}
 			// else if (vexRT[Btn5U] == 0 && vexRT[Btn5D] == 0){
 			// 	stopClawLift();
@@ -249,6 +253,11 @@ task lift()
 			else if (vexRT[Btn8D] == 1){
 				moveLiftDownAndPkcUpForFeed(FEED_LIFT, powerliftDown, FEED_CLAWLIFT, powerClawLiftDown);
 			}
+
+
+			if (vexRT[Btn5U] == 0 && vexRT[Btn5D] == 0){
+				stopClawLift();
+			}
 		}
 
 	}
@@ -258,15 +267,27 @@ task claw()
 {
 	while (true)
 	{
+		wait1Msec(50);
+
 		if (vexRT[Btn6U] == 1){
-			closeClaw(50);
-			if (vexRT[Btn6U] == 0) {
-				closeClaw(40);
-			}
+
+			// if (motor[clawMotor] == 0)
+			// {
+				closeClaw(50);
+			// }
+			// else
+			// {
+			// 	stopClaw();
+			// }
+
+
+			// if (vexRT[Btn6U] == 0) {
+			// 	closeClaw(40);
+			// }
 		}
 		else if (vexRT[Btn6D] == 1){
 			openClaw(50);
-			wait1Msec(225);
+			wait1Msec(250);
 			stopClaw();
 		}
 	}
@@ -282,6 +303,8 @@ task usercontrol()
 	//int on = 0;
 	while (true)
 	{
+		wait1Msec(50);
+
 		/*if(vexRT[Btn7L] == 1){ //toggle auto stay
 		if (on == 0){
 		on = 1;
@@ -385,16 +408,18 @@ void moveLift(int power){
 
 // HELPER
 void moveLiftUpToConeHeightAndRelease(int powerLift, int distanceClawLift, int powerClawLift) {
+	stopClaw();
+	moveClawLiftUpAndStop(MIN_CLAWLIFT - 300, powerClawLift);
 	moveLiftUpToConeHeightAndHold(powerLift);
 	wait1Msec(200);
 	moveClawLiftUpAndStop(distanceClawLift, powerClawLift);
 	wait1Msec(200);
 	wait1Msec(200);
-	moveLiftDownToConeHeightAndStop(50);
+	moveLiftDownToConeHeightAndStop(40);
 	wait1Msec(200);
-	openClaw(50);
-	wait1Msec(225);
-	stopClaw();
+	// openClaw(50);
+	// wait1Msec(225);
+	// stopClaw();
 }
 
 void moveLiftUpToConeHeightAndHold(int power) {
@@ -404,23 +429,48 @@ void moveLiftUpToConeHeightAndHold(int power) {
 	wait1Msec(100);
 
 	int distaince = getConeDistance();
+	int height = getLiftPosition();
 	// while (distaince > 0 && distaince < 20){
+	int count = 0;
+	int tPower = power;
 	while (true){
-		if (distaince > 20 || distaince >= MAX_LIFT)
+		if (distaince > 20)
+		{
+			writeDebugStreamLine("moveLiftUpToConeHeightAndHold #1) Cone Distaince: %d, Lift Height: %d", distaince, height);
+			count++;
+			tPower = 0;
+
+			wait1Msec(50);
+		}
+		else if (distaince < 21 && count > 0)
+		{
+			writeDebugStreamLine("moveLiftUpToConeHeightAndHold #2) Cone Distaince: %d, Lift Height: %d", distaince, height);
+
+			count  = 0;
+			tPower = power;
+		}
+
+		if (height >= MAX_LIFT)
+		{
+			writeDebugStreamLine("moveLiftUpToConeHeightAndHold #3) Cone Distaince: %d, Lift Height: %d", distaince, height);
+			break;
+		}
+
+		if (count > 2)
 		{
 			break;
 		}
 
-		moveLiftUp(power);
+		moveLiftUp(tPower);
 		if (vexRT[Btn8L] == 1)
 		{
 			break;
 		}
 
 		distaince = getConeDistance();
+		height = getLiftPosition();
 	}
 
-	writeDebugStreamLine("moveLiftUpToConeHeightAndHold) Cone Distaince: %d", distaince);
 
 	holdLift();
 
@@ -495,12 +545,15 @@ void moveLiftToMax(int distanceLift, int powerLift, int distanceClawLift, int po
 	moveClawLiftUpAndStop(distanceClawLift, powerClawLift);
 }
 
-void moveLiftDownAndPickUp(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift) {
-	moveLiftUpToConeHeightAndHold(powerLift + 10);
+void moveLiftDownAndPickUp(int distanceLift, int powerliftUp, int powerliftDown, int distanceClawLift, int powerClawLift) {
+	openClaw(70);
+	wait1Msec(200);
+	moveLiftUpToConeHeightAndHold(powerliftUp);
+	stopClaw();
 	wait1Msec(200);
 	moveClawLiftDownAndStop(distanceClawLift, powerClawLift);
 	wait1Msec(200);
-	moveLiftDownAndStop(distanceLift, powerLift);
+	moveLiftDownAndStop(distanceLift, powerliftDown);
 	wait1Msec(200);
 }
 
@@ -638,7 +691,11 @@ void moveMobileLiftUpAndStop() {
 }
 
 void moveMobileLiftDownToRelease(int powerLift, int distanceClawLift, int powerClawLift) {
+	openClaw(70);
+	wait1Msec(200);
 	moveLiftUpToConeHeightAndHold(powerLift);
+	stopClaw();
+
 	wait1Msec(200);
 	moveLiftUpAndStop(450, powerLift);
 	wait1Msec(200);
