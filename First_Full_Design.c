@@ -1,6 +1,9 @@
-#pragma config(Sensor, in1,    liftPosition,   sensorPotentiometer)
-#pragma config(Sensor, in3,    clawLiftPosition, sensorPotentiometer)
-#pragma config(Sensor, in5,    mobileLiftPosition, sensorPotentiometer)
+#pragma config(Sensor, in1,    ExternalBatteryValue, sensorAnalog)
+#pragma config(Sensor, in2,    GyroPosition,   sensorGyro)
+#pragma config(Sensor, in3,    liftPosition,   sensorPotentiometer)
+#pragma config(Sensor, in5,    clawLiftPosition, sensorPotentiometer)
+#pragma config(Sensor, in7,    mobileLiftPosition, sensorPotentiometer)
+#pragma config(Sensor, in8,    Accel_y,        sensorAccelerometer)
 #pragma config(Sensor, dgtl1,  coneHeight,     sensorSONAR_cm)
 #pragma config(Motor,  port1,           clawMotor,     tmotorVex393HighSpeed_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           wheelLeft,     tmotorVex393HighSpeed_MC29, openLoop)
@@ -30,14 +33,19 @@
 #include "Vex_Competition_Includes.c"
 
 const int MAX_CLAWLIFT = 3300;
-const int MIN_CLAWLIFT = 2200;
+const int MIN_CLAWLIFT = 2000;
 const int MAX_MOBILELIFT = 2100;
+// const int MAX_LIFT = 1600;
+const int MAX_LIFT = 1500;
 const int MIN_LIFT = 230;
-const int MAX_LIFT = 1600;
 
 const int FEED_LIFT = 720;
 const int FEED_CLAWLIFT = 2200;
 
+
+int autonomousMode = 1;
+
+const int POWER_CLAW_OPEN = 70;
 
 // ---------------------------------------
 // TASKS
@@ -80,6 +88,10 @@ void moveMobileLiftDown(int power);
 void moveMobileLiftUpAndStop();
 void moveMobileLiftDownAndStop();
 
+// MOVE
+void MoveHelper(int power);
+void TurnGyro(int distance, int power);
+void TurnHelper(int power);
 
 // MACRO
 void moveMobileLiftUpToStack(int powerLift, int distanceClawLift, int powerClawLift);
@@ -89,6 +101,15 @@ void moveLiftDownAndPickUp(int distanceLift,int powerliftUp, int powerliftDown, 
 
 void moveLiftDownAndPkcUpForFeed(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift);
 void moveLiftToMax(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift);
+
+// BATTERY
+int AdjustPowerUsingBatteryLevel(int originalPower);
+int AdjustPowerUsingExternalBatteryLevel(int originalPower);
+
+// LCD
+void AutonomousSelector(int btnLCD);
+void DisplayAutonomousMode(int autonomousModeValue);
+void displayBatteryLevelOnLCD(int autonomousModeValue);
 
 
 // void moveLiftUpAndRelease(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift);
@@ -270,23 +291,11 @@ task claw()
 		wait1Msec(50);
 
 		if (vexRT[Btn6U] == 1){
-
-			// if (motor[clawMotor] == 0)
-			// {
-				closeClaw(50);
-			// }
-			// else
-			// {
-			// 	stopClaw();
-			// }
-
-
-			// if (vexRT[Btn6U] == 0) {
-			// 	closeClaw(40);
-			// }
+			moveClawLiftDown(55);
+			closeClaw(50);
 		}
 		else if (vexRT[Btn6D] == 1){
-			openClaw(50);
+			openClaw(POWER_CLAW_OPEN);
 			wait1Msec(250);
 			stopClaw();
 		}
@@ -304,6 +313,14 @@ task usercontrol()
 	while (true)
 	{
 		wait1Msec(50);
+
+
+		int btnLCD = nLCDButtons;
+		if (btnLCD > 0)
+		{
+			AutonomousSelector(btnLCD);
+			// startTask(displayBatteryLevelOnLCD);
+		}
 
 		/*if(vexRT[Btn7L] == 1){ //toggle auto stay
 		if (on == 0){
@@ -400,10 +417,11 @@ void moveLiftDown(int power) {
 }
 
 void moveLift(int power){
-	motor[armLiftLeftB] = -power;
-	motor[armLiftLeftT] = power;
-	motor[armLiftRightB] =  power;
-	motor[armLiftRightT] = -power;
+	int newPower = AdjustPowerUsingBatteryLevel(power);
+	motor[armLiftLeftB] = -newPower;
+	motor[armLiftLeftT] = newPower;
+	motor[armLiftRightB] =  newPower;
+	motor[armLiftRightT] = -newPower;
 }
 
 // HELPER
@@ -546,8 +564,8 @@ void moveLiftToMax(int distanceLift, int powerLift, int distanceClawLift, int po
 }
 
 void moveLiftDownAndPickUp(int distanceLift, int powerliftUp, int powerliftDown, int distanceClawLift, int powerClawLift) {
-	openClaw(70);
-	wait1Msec(200);
+	openClaw(POWER_CLAW_OPEN);
+	wait1Msec(500);//CHANGED FROM 200
 	moveLiftUpToConeHeightAndHold(powerliftUp);
 	stopClaw();
 	wait1Msec(200);
@@ -598,8 +616,10 @@ void moveClawLiftDown(int power){
 }
 
 void moveClawLift(int power){
-	motor[clawLiftL] = power;
-	motor[clawLiftR] = -power;
+	int newPower = AdjustPowerUsingExternalBatteryLevel(power);
+
+	motor[clawLiftL] = newPower;
+	motor[clawLiftR] = -newPower;
 }
 
 void moveClawLiftUpAndStop(int distance, int power) {
@@ -691,9 +711,9 @@ void moveMobileLiftUpAndStop() {
 }
 
 void moveMobileLiftDownToRelease(int powerLift, int distanceClawLift, int powerClawLift) {
-	openClaw(70);
+	openClaw(POWER_CLAW_OPEN);
 	wait1Msec(200);
-	moveLiftUpToConeHeightAndHold(powerLift);
+	moveLiftUpToConeHeightAndHold(powerLift / 2);
 	stopClaw();
 
 	wait1Msec(200);
@@ -726,3 +746,208 @@ void moveMobileLiftDownAndStop() {
 	stopMobileLift();
 }
 // END MOBILE LIFT
+
+// -------------------------------------
+// MOVE
+void MoveAccel(int distance, int power) {
+	// ClearEncoder();
+
+	//writeDebugStreamLine("MoveValue_Accel) Started ===");
+	int velocity = 0;
+	int position = 0;
+	int value = 0;
+	clearTimer(T3);
+	int newPower = AdjustPowerUsingExternalBatteryLevel(power);
+	while (abs(position) < abs(distance)){
+		value = SensorValue[Accel_y];
+		velocity += value;
+		//velocity = (value == 0)? velocity : velocity + value;
+		position += velocity;
+
+		// writeDebugStreamLine("MoveValue_Accel) pos: %d, vel: %d ", position, velocity);
+		if (time1[T3] >= 2000)
+		{
+			break;
+		}
+		MoveHelper(newPower);
+		wait1Msec(100);
+	}
+	MoveHelper(0);
+}
+
+void MoveHelper(int power)
+{
+	motor[wheelLeft] = power;
+	motor[wheelRight] = -power;
+}
+
+void TurnGyro(int distance, int power) {
+	// wait1Msec(time);
+	SensorValue[GyroPosition] = 0;
+	int newPower = AdjustPowerUsingExternalBatteryLevel(power);
+	while (abs(SensorValue[GyroPosition])<abs(distance)){
+		TurnHelper(newPower);
+	}
+	TurnHelper(0);
+}
+
+void TurnHelper(int power)
+{
+	motor[wheelLeft] = power;
+	motor[wheelRight] = power;
+}
+
+// void TurnRight(int power)
+// {
+// 	motor[wheelLeft] = -power;
+// 	motor[wheelRight] = -power;
+// }
+// END MOVE
+
+// -------------------------------------
+// ADJUST BATTERY
+int AdjustPowerUsingBatteryLevel(int originalPower)
+{
+	float batteryLevel = nImmediateBatteryLevel;
+	float batteryOffset =	7500 / batteryLevel;
+	int adjustedPower = originalPower * batteryOffset;
+	//  writeDebugStreamLine("(AjustBattery) BatterLevel: %d - OriginalPower: %d - WantedPower: %d", AdjustBatteryLevel, OriginalPower, WantedPower);
+	return adjustedPower;
+}
+
+int AdjustPowerUsingExternalBatteryLevel(int originalPower)
+{
+	float batteryLevel = SensorValue[ExternalBatteryValue] * 3.57;
+
+	float batteryOffset =	7500 / batteryLevel;
+	int adjustedPower = originalPower * batteryOffset;
+	//  writeDebugStreamLine("(AjustBattery) BatterLevel: %d - OriginalPower: %d - WantedPower: %d", AdjustBatteryLevel, OriginalPower, WantedPower);
+	return adjustedPower;
+}
+
+// END ADJUST BATTERY
+
+
+// -------------------------------------
+// LCD
+void AutonomousSelector(int btnLCD)
+{
+	writeDebugStreamLine("AutonomousSelector) button: %d", btnLCD);
+
+	bLCDBacklight=true;
+
+	displayBatteryLevelOnLCD(autonomousMode);
+	int autonomousModeValue = autonomousMode;
+
+	int button = 0;
+	while(true)
+	{
+		button = nLCDButtons;
+
+		if (button == 2 || vexRT[Btn8L] == 1)
+		{
+			displayBatteryLevelOnLCD(autonomousModeValue);
+
+			bLCDBacklight=false;
+			break;
+		}
+		else if (button == 1 || vexRT[Btn6U] == 1)
+		{
+			if (autonomousModeValue > 1)
+			{
+				autonomousModeValue--;
+			}
+
+			DisplayAutonomousMode(autonomousModeValue);
+		}
+		else if (button == 4 || vexRT[Btn6D] == 1)
+		{
+			if (autonomousModeValue < 3)
+			{
+				autonomousModeValue++;
+			}
+
+			DisplayAutonomousMode(autonomousModeValue);
+		}
+	}
+
+	bLCDBacklight=false;
+}
+
+void DisplayAutonomousMode(int autonomousModeValue)
+{
+	writeDebugStreamLine("DisplayAutonomousMode) autonomousModeValue: %d", autonomousModeValue);
+
+	clearLCDLine(0);                                            // Clear line 1 (0) of the LCD
+	clearLCDLine(1);                                            // Clear line 2 (1) of the LCD
+
+	string text;
+	//}
+	switch(autonomousModeValue)
+	{
+	case 1:
+		{
+			text = "Autonomous";
+			break;
+		}
+	case 2:
+		{
+			//text = "ProgrammingSkill";
+			text = "None";
+			break;
+		}
+	case 3:
+		{
+			text = "ProgSkill";
+			break;
+		}
+	}
+
+	//Display the Primary Robot battery voltage
+	// displayLCDString(0, 0, "Autonomous: ");
+	displayLCDString(0, 0, text);
+
+	wait1Msec(500);
+}
+
+void displayBatteryLevelOnLCD(int autonomousModeValue)
+{
+	writeDebugStreamLine("displayBatteryLevelOnLCD) autonomousModeValue: %d", autonomousModeValue);
+
+	clearLCDLine(0);                                            // Clear line 1 (0) of the LCD
+	clearLCDLine(1);                                            // Clear line 2 (1) of the LCD
+
+	autonomousMode = autonomousModeValue;
+
+	string text;
+	sprintf(text, "Selected: %d", autonomousMode); //Build the value to be displayed
+
+	//Display the Primary Robot battery voltage
+	// displayLCDString(0, 0, "Autonomous: ");
+	displayLCDString(0, 0, text);
+
+	wait1Msec(800);
+
+	//while(true)                                                        // An infinite loop to keep the program running until you terminate it
+	//{
+	clearLCDLine(0);                                            // Clear line 1 (0) of the LCD
+	clearLCDLine(1);                                            // Clear line 2 (1) of the LCD
+
+	string mainBattery, externalBattery;
+
+	//Display the Primary Robot battery voltage
+	displayLCDString(0, 0, "Primary: ");
+	sprintf(mainBattery, "%1.2f%c", nImmediateBatteryLevel/1000.0,'V'); //Build the value to be displayed
+	displayNextLCDString(mainBattery);
+
+	//float externalBatteryLevel = SensorValue[ExternalBatteryValue];
+	//Display the Backup battery voltage
+	displayLCDString(1, 0, "External: ");
+	sprintf(externalBattery, "%1.2f%c", (SensorValue[ExternalBatteryValue] * 3.57)/1000.0, 'V');    //Build the value to be displayed
+	displayNextLCDString(externalBattery);
+
+	//Short delay for the LCD refresh rate
+	wait1Msec(500);
+}
+
+// END LCD
