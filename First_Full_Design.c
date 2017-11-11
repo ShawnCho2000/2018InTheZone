@@ -1,6 +1,7 @@
 #pragma config(Sensor, in1,    ExternalBatteryValue, sensorAnalog)
 #pragma config(Sensor, in2,    GyroPosition,   sensorGyro)
 #pragma config(Sensor, in3,    liftPosition,   sensorPotentiometer)
+#pragma config(Sensor, in4,    colorValue,     sensorReflection)
 #pragma config(Sensor, in5,    clawLiftPosition, sensorPotentiometer)
 #pragma config(Sensor, in7,    mobileLiftPosition, sensorPotentiometer)
 #pragma config(Sensor, in8,    Accel_x,        sensorAccelerometer)
@@ -32,14 +33,14 @@
 //Main competition background code...do not modify!
 #include "Vex_Competition_Includes.c"
 
-const int MAX_CLAWLIFT = 3300;
-const int MIN_CLAWLIFT = 2000;
+const int MAX_CLAWLIFT = 3100;
+const int MIN_CLAWLIFT = 2100;
 const int MAX_MOBILELIFT = 2100;
 // const int MAX_LIFT = 1600;
-const int MAX_LIFT = 1500;
-const int MIN_LIFT = 230;
+const int MAX_LIFT = 1590;
+const int MIN_LIFT = 120;
 
-const int FEED_LIFT = 720;
+const int FEED_LIFT = 850;
 const int FEED_CLAWLIFT = 2200;
 
 
@@ -89,10 +90,10 @@ void moveMobileLiftUpAndStop();
 void moveMobileLiftDownAndStop();
 
 // MOVE
+void MoveAccel(int distance, int power);
 void MoveHelper(int power);
 void TurnGyro(int distance, int power);
 void TurnHelper(int power);
-void MoveAccel(int distance, int power);
 
 // MACRO
 void moveMobileLiftUpToStack(int powerLift, int distanceClawLift, int powerClawLift);
@@ -101,7 +102,7 @@ void moveMobileLiftDownToReleaseAuton(int powerLift, int distanceClawLift, int p
 void moveLiftUpToConeHeightAndRelease(int powerLift, int distanceClawLift, int powerClawLift);
 void moveLiftDownAndPickUp(int distanceLift,int powerliftUp, int powerliftDown, int distanceClawLift, int powerClawLift);
 
-void moveLiftDownAndPkcUpForFeed(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift);
+void moveLiftDownAndPkcUpForFeed(int distanceLift, int powerliftUp, int powerliftDown, int distanceClawLift, int powerClawLift);
 void moveLiftToMax(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift);
 
 // BATTERY
@@ -119,7 +120,6 @@ void displayBatteryLevelOnLCD(int autonomousModeValue);
 // HELPERS
 void dropCone();
 void startAuton();
-
 void stopAll();
 void stopLift();
 void stopClawLift();
@@ -274,15 +274,12 @@ task lift()
 				// moveMobileLiftUp(30);
 			}
 			else if (vexRT[Btn8U] == 1){
-				moveLiftToMax(MAX_LIFT, powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
-				// moveLiftUpToConeHeightAndRelease(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
-			}
-			/*else if (vexRT[Btn8D] == 1){
-			moveLiftDownAndPkcUpForFeed(FEED_LIFT, powerliftDown, FEED_CLAWLIFT, powerClawLiftDown);
-			}*/
-			else if (vexRT[Btn8D] == 1) {
+				// moveLiftToMax(MAX_LIFT, powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
 				moveMobileLiftDownToReleaseAuton(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
-				//MoveAccel(250, 50);
+			}
+			else if (vexRT[Btn8D] == 1){
+				moveLiftDownAndPkcUpForFeed(FEED_LIFT, powerliftUp, powerliftDown / 2, FEED_CLAWLIFT, powerClawLiftDown);
+				// moveMobileLiftDownToReleaseAuton(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
 			}
 
 			if (vexRT[Btn5U] == 0 && vexRT[Btn5D] == 0 && vexRT[Btn6U] == 0){
@@ -300,7 +297,7 @@ task claw()
 		wait1Msec(50);
 
 		if (vexRT[Btn6U] == 1){
-			moveClawLiftDown(55);
+			moveClawLiftDown(25);
 			closeClaw(50);
 		}
 		else if (vexRT[Btn6D] == 1){
@@ -442,7 +439,7 @@ void moveLiftUpToConeHeightAndRelease(int powerLift, int distanceClawLift, int p
 	moveClawLiftUpAndStop(distanceClawLift, powerClawLift);
 	wait1Msec(200);
 	wait1Msec(200);
-	moveLiftDownToConeHeightAndStop(40);
+	moveLiftDownToConeHeightAndStop(30);
 	wait1Msec(200);
 	// openClaw(50);
 	// wait1Msec(225);
@@ -483,7 +480,7 @@ void moveLiftUpToConeHeightAndHold(int power) {
 			break;
 		}
 
-		if (count > 2)
+		if (count > 3)
 		{
 			break;
 		}
@@ -575,7 +572,7 @@ void moveLiftToMax(int distanceLift, int powerLift, int distanceClawLift, int po
 void moveLiftDownAndPickUp(int distanceLift, int powerliftUp, int powerliftDown, int distanceClawLift, int powerClawLift) {
 	openClaw(POWER_CLAW_OPEN);
 	wait1Msec(500);//CHANGED FROM 200
-	moveLiftUpToConeHeightAndHold(powerliftUp);
+	moveLiftUpToConeHeightAndHold((powerliftUp / 3) * 2/*powerliftUp*/);
 	stopClaw();
 	wait1Msec(200);
 	moveClawLiftDownAndStop(distanceClawLift, powerClawLift);
@@ -584,16 +581,25 @@ void moveLiftDownAndPickUp(int distanceLift, int powerliftUp, int powerliftDown,
 	wait1Msec(200);
 }
 
-void moveLiftDownAndPkcUpForFeed(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift) {
-	moveLiftUpToConeHeightAndHold(powerLift);
+void moveLiftDownAndPkcUpForFeed(int distanceLift, int powerliftUp, int powerliftDown, int distanceClawLift, int powerClawLift) {
+	openClaw(POWER_CLAW_OPEN);
+	wait1Msec(500);//CHANGED FROM 200
+	moveLiftUpToConeHeightAndHold(powerliftUp);
+	stopClaw();
 	wait1Msec(200);
-	moveClawLiftDownAndStop(distanceClawLift + 200, powerClawLift);
+	moveClawLiftDownAndStop(distanceClawLift, powerClawLift);
 	wait1Msec(200);
-	moveLiftDownAndStop(distanceLift, powerLift / 2);
+	moveLiftDownAndStop(distanceLift, powerliftDown);
 	wait1Msec(200);
-	moveLiftUpAndStop(distanceLift, powerLift);
-	wait1Msec(200);
-	moveClawLiftDownAndStop(distanceClawLift - 230, powerClawLift);
+	// moveLiftUpToConeHeightAndHold(powerLift);
+	// wait1Msec(200);
+	// moveClawLiftDownAndStop(distanceClawLift + 200, powerClawLift);
+	// wait1Msec(200);
+	// moveLiftDownAndStop(distanceLift, powerLift / 2);
+	// wait1Msec(200);
+	// moveLiftUpAndStop(distanceLift, powerLift);
+	// wait1Msec(200);
+	// moveClawLiftDownAndStop(distanceClawLift - 230, powerClawLift);
 }
 
 void moveLiftDownAndStop(int distance, int power) {
@@ -706,6 +712,18 @@ void moveMobileLiftUpToStack(int powerLift, int distanceClawLift, int powerClawL
 	moveMobileLiftUpAndStop();
 }
 
+void moveMobileLiftDownToReleaseAuton(int powerLift, int distanceClawLift, int powerClawLift) {
+ 	moveLiftUpToConeHeightAndHold(powerLift / 2);
+
+ 	wait1Msec(200);
+ 	moveLiftUpAndStop(450, powerLift);
+ 	wait1Msec(200);
+
+ 	moveClawLiftUpAndStop(distanceClawLift, powerClawLift);
+ 	wait1Msec(200);
+ 	moveMobileLiftDownAndStop();
+}
+
 void moveMobileLiftUpAndStop() {
 
 	while (getMobileLiftPosition() < MAX_MOBILELIFT){
@@ -724,18 +742,6 @@ void moveMobileLiftDownToRelease(int powerLift, int distanceClawLift, int powerC
 	wait1Msec(200);
 	moveLiftUpToConeHeightAndHold(powerLift / 2);
 	stopClaw();
-
-	wait1Msec(200);
-	moveLiftUpAndStop(450, powerLift);
-	wait1Msec(200);
-
-	moveClawLiftUpAndStop(distanceClawLift, powerClawLift);
-	wait1Msec(200);
-	moveMobileLiftDownAndStop();
-}
-
-void moveMobileLiftDownToReleaseAuton(int powerLift, int distanceClawLift, int powerClawLift) {
-	moveLiftUpToConeHeightAndHold(powerLift / 2);
 
 	wait1Msec(200);
 	moveLiftUpAndStop(450, powerLift);
@@ -971,10 +977,10 @@ void displayBatteryLevelOnLCD(int autonomousModeValue)
 	wait1Msec(500);
 }
 
-// END LCD
-
 void startAuton() {
-	closeClaw(50);
-	wait1Msec(200);
-	closeClaw(0);
-}
+ 	closeClaw(50);
+ 	wait1Msec(200);
+ 	closeClaw(0);
+ }
+
+// END LCD
