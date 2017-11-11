@@ -227,10 +227,12 @@ task lift()
 				// }
 			}
 			else if (vexRT[Btn5U] == 1){
-				moveClawLiftUpAndStop(MAX_CLAWLIFT, powerClawLiftUp);
+				moveClawLiftUp(powerClawLiftUp);
+				// moveClawLiftUpAndStop(MAX_CLAWLIFT, powerClawLiftUp);
 			}
 			else if (vexRT[Btn5D] == 1){
-				moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown);
+				moveClawLiftDown(powerClawLiftDown);
+				// moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown);
 			}
 
 			if (vexRT[Btn5U] == 0 && vexRT[Btn5D] == 0){
@@ -275,8 +277,7 @@ task lift()
 				moveLiftDownAndPkcUpForFeed(FEED_LIFT, powerliftDown, FEED_CLAWLIFT, powerClawLiftDown);
 			}
 
-
-			if (vexRT[Btn5U] == 0 && vexRT[Btn5D] == 0){
+			if (vexRT[Btn5U] == 0 && vexRT[Btn5D] == 0 && vexRT[Btn6U] == 0){
 				stopClawLift();
 			}
 		}
