@@ -3,7 +3,7 @@
 #pragma config(Sensor, in3,    liftPosition,   sensorPotentiometer)
 #pragma config(Sensor, in5,    clawLiftPosition, sensorPotentiometer)
 #pragma config(Sensor, in7,    mobileLiftPosition, sensorPotentiometer)
-#pragma config(Sensor, in8,    Accel_y,        sensorAccelerometer)
+#pragma config(Sensor, in8,    Accel_x,        sensorAccelerometer)
 #pragma config(Sensor, dgtl1,  coneHeight,     sensorSONAR_cm)
 #pragma config(Motor,  port1,           clawMotor,     tmotorVex393HighSpeed_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           wheelLeft,     tmotorVex393HighSpeed_MC29, openLoop)
@@ -92,10 +92,12 @@ void moveMobileLiftDownAndStop();
 void MoveHelper(int power);
 void TurnGyro(int distance, int power);
 void TurnHelper(int power);
+void MoveAccel(int distance, int power);
 
 // MACRO
 void moveMobileLiftUpToStack(int powerLift, int distanceClawLift, int powerClawLift);
 void moveMobileLiftDownToRelease(int powerLift, int distanceClawLift, int powerClawLift);
+void moveMobileLiftDownToReleaseAuton(int powerLift, int distanceClawLift, int powerClawLift);
 void moveLiftUpToConeHeightAndRelease(int powerLift, int distanceClawLift, int powerClawLift);
 void moveLiftDownAndPickUp(int distanceLift,int powerliftUp, int powerliftDown, int distanceClawLift, int powerClawLift);
 
@@ -116,6 +118,7 @@ void displayBatteryLevelOnLCD(int autonomousModeValue);
 
 // HELPERS
 void dropCone();
+void startAuton();
 
 void stopAll();
 void stopLift();
@@ -148,6 +151,7 @@ void pre_auton()
 
 	// All activities that occur before the competition starts
 	// Example: clearing encoders, setting servo positions, ...
+	startAuton();
 }
 
 /*---------------------------------------------------------------------------*/
@@ -273,8 +277,12 @@ task lift()
 				moveLiftToMax(MAX_LIFT, powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
 				// moveLiftUpToConeHeightAndRelease(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
 			}
-			else if (vexRT[Btn8D] == 1){
-				moveLiftDownAndPkcUpForFeed(FEED_LIFT, powerliftDown, FEED_CLAWLIFT, powerClawLiftDown);
+			/*else if (vexRT[Btn8D] == 1){
+			moveLiftDownAndPkcUpForFeed(FEED_LIFT, powerliftDown, FEED_CLAWLIFT, powerClawLiftDown);
+			}*/
+			else if (vexRT[Btn8D] == 1) {
+				moveMobileLiftDownToReleaseAuton(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
+				//MoveAccel(250, 50);
 			}
 
 			if (vexRT[Btn5U] == 0 && vexRT[Btn5D] == 0 && vexRT[Btn6U] == 0){
@@ -726,6 +734,18 @@ void moveMobileLiftDownToRelease(int powerLift, int distanceClawLift, int powerC
 	moveMobileLiftDownAndStop();
 }
 
+void moveMobileLiftDownToReleaseAuton(int powerLift, int distanceClawLift, int powerClawLift) {
+	moveLiftUpToConeHeightAndHold(powerLift / 2);
+
+	wait1Msec(200);
+	moveLiftUpAndStop(450, powerLift);
+	wait1Msec(200);
+
+	moveClawLiftUpAndStop(distanceClawLift, powerClawLift);
+	wait1Msec(200);
+	moveMobileLiftDownAndStop();
+}
+
 void moveMobileLiftDownAndStop() {
 
 	while (getMobileLiftPosition() > MAX_MOBILELIFT){
@@ -760,7 +780,7 @@ void MoveAccel(int distance, int power) {
 	clearTimer(T3);
 	int newPower = AdjustPowerUsingExternalBatteryLevel(power);
 	while (abs(position) < abs(distance)){
-		value = SensorValue[Accel_y];
+		value = SensorValue[Accel_x];
 		velocity += value;
 		//velocity = (value == 0)? velocity : velocity + value;
 		position += velocity;
@@ -952,3 +972,9 @@ void displayBatteryLevelOnLCD(int autonomousModeValue)
 }
 
 // END LCD
+
+void startAuton() {
+	closeClaw(50);
+	wait1Msec(200);
+	closeClaw(0);
+}
