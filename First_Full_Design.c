@@ -23,7 +23,9 @@
 /*        Description: Competition template for VEX EDR                      */
 /*                                                                           */
 /*---------------------------------------------------------------------------*/
-
+//When the potentiometer value is changed, make sure you check the actual
+//sensor values and change the program values accordingly
+//7D is MinLift, 7R LiftPickMobile, 8D FeedLift
 // This code is for the VEX cortex platform
 #pragma platform(VEX2)
 
@@ -38,11 +40,12 @@ const int MIN_CLAWLIFT = 2100;
 const int MAX_MOBILELIFT = 2100;
 // const int MAX_LIFT = 1600;
 const int MAX_LIFT = 2000;
-const int MIN_LIFT = 280;
+const int MIN_LIFT = 620;
 
-const int FEED_LIFT = 1400;
+const int FEED_LIFT = 1200;
 const int FEED_CLAWLIFT = 2200;
 const int GLOBAL_WAITER = 100;
+const int LIFT_PICK_MOBILE = 750;
 
 
 int autonomousMode = 1;
@@ -125,6 +128,7 @@ void displayBatteryLevelOnLCD(int autonomousModeValue);
 // HELPERS
 void dropCone();
 void startAuton();
+void autonRed();
 void stopAll();
 void stopLift();
 void stopClawLift();
@@ -171,12 +175,17 @@ void pre_auton()
 
 task autonomous()
 {
+	if (autonomousMode == 1)
+	{
+			autonRed();
+	}
+		
 	// ..........................................................................
 	// Insert user code here.
 	// ..........................................................................
 
 	// Remove this function call once you have "real" code.
-	AutonomousCodePlaceholderForTesting();
+
 }
 
 /*---------------------------------------------------------------------------*/
@@ -279,55 +288,7 @@ task lift()
 				// moveMobileLiftUp(30);
 			}
 			else if (vexRT[Btn8U] == 1){
-				long startTime = nPgmTime;
-
-				//moveLiftToMax(MAX_LIFT, powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
-				moveMobileLiftDownToReleaseAuton(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
-				wait1Msec(GLOBAL_WAITER);
-				MoveAccel(75, 50);
-				wait1Msec(GLOBAL_WAITER);
-				moveMobileLiftUpToStackAuton(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);	
-				moveLiftDownAndStop(280, 50);
-				wait1Msec(GLOBAL_WAITER);				
-				//moveLiftDownAndPickUp(MIN_LIFT, powerliftUp, powerliftDown, MIN_CLAWLIFT, powerClawLiftDown);
-				openClaw(POWER_CLAW_OPEN); //for one cone only!
-				wait1Msec(400); //for one cone only!
-				stopClaw(); //for one cone only!
-				/*MoveAccel(60, 60);
-				wait1Msec(GLOBAL_WAITER);
-				moveClawLiftDown(35);
-				wait1Msec(GLOBAL_WAITER);
-				moveClawLiftDown(0);
-				closeClaw(50);
-				wait1Msec(700);
-				closeClaw(0);
-				moveLiftUpToConeHeightAndRelease(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
-				wait1Msec(GLOBAL_WAITER);
-				openClaw(50);
-				wait1Msec(225);
-				stopClaw();*/
-				moveLiftUpAndStop(1600, powerliftUp);
-				MoveAccel(800, -100);
-				wait1Msec(GLOBAL_WAITER);
-				TurnGyro(500, -50);
-				wait1Msec(GLOBAL_WAITER);
-				MoveAccel(250, -100);
-				wait1Msec(GLOBAL_WAITER);
-				TurnGyro(750, -50);
-				wait1Msec(GLOBAL_WAITER);
-				MoveAccel(300, 70);
-				wait1Msec(GLOBAL_WAITER);
-				MoveAccel(80, 30);
-				MoveHelper(20);
-				moveMobileLiftDownAndStop();
-				wait1Msec(GLOBAL_WAITER);
-				/*moveMobileLiftUp(120);
-				wait1Msec(300);
-				moveMobileLiftDownAndStop();*/
-				MoveAccel(300, -80);
-
-				writeDebugStreamLine("autonomous) Time: %d", nPgmTime - startTime);
-
+				moveLiftToMax(MAX_LIFT, powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
 			}
 			else if (vexRT[Btn8D] == 1){
 				moveLiftDownAndPkcUpForFeed(FEED_LIFT, powerliftUp, powerliftDown / 2, FEED_CLAWLIFT, powerClawLiftDown);
@@ -363,7 +324,7 @@ task claw()
 
 task usercontrol()
 {
-	//startTask(move);
+	startTask(move);
 	startTask(lift);
 	startTask(claw);
 	// User control code here, inside the loop
@@ -786,7 +747,7 @@ void moveMobileLiftUpToStackAuton(int powerLift, int distanceClawLift, int power
 void moveMobileLiftDownToReleaseAuton(int powerLift, int distanceClawLift, int powerClawLift) {
 	moveLiftUpToConeHeightAndHold(powerLift / 2);
 	wait1Msec(200);
-	moveLiftUpAndStopAuton(1600, powerLift);
+	moveLiftUpAndStopAuton(LIFT_PICK_MOBILE, powerLift); //original value was 1600
 	wait1Msec(200);
 	//moveClawLiftUpAndStop(distanceClawLift, powerClawLift);
 	moveMobileLiftDownAndStop();
@@ -830,7 +791,7 @@ void moveMobileLiftDownToRelease(int powerLift, int distanceClawLift, int powerC
 	stopClaw();
 
 	wait1Msec(200);
-	moveLiftUpAndStop(450, powerLift);
+	moveLiftUpAndStop(LIFT_PICK_MOBILE, powerLift);
 	wait1Msec(200);
 
 	moveClawLiftUpAndStop(distanceClawLift, powerClawLift);
@@ -1093,6 +1054,59 @@ void startAuton() {
 	closeClaw(50);
 	wait1Msec(400);
 	closeClaw(0);
+}
+
+void autonRed() {
+	long startTime = nPgmTime;
+
+	int powerLiftUp = 100;
+	int powerClawLiftUp = 80;
+	//moveLiftToMax(MAX_LIFT, powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
+	moveMobileLiftDownToReleaseAuton(powerLiftUp, MAX_CLAWLIFT, powerClawLiftUp);
+	wait1Msec(GLOBAL_WAITER);
+	MoveAccel(75, 50);
+	wait1Msec(GLOBAL_WAITER);
+	moveMobileLiftUpToStackAuton(powerLiftUp, MAX_CLAWLIFT, powerClawLiftUp);
+	moveLiftDownAndStop(280, 50);
+	wait1Msec(GLOBAL_WAITER);
+	//moveLiftDownAndPickUp(MIN_LIFT, powerliftUp, powerliftDown, MIN_CLAWLIFT, powerClawLiftDown);
+	openClaw(POWER_CLAW_OPEN); //for one cone only!
+	wait1Msec(400); //for one cone only!
+	stopClaw(); //for one cone only!
+	/*MoveAccel(60, 60);
+	wait1Msec(GLOBAL_WAITER);
+	moveClawLiftDown(35);
+	wait1Msec(GLOBAL_WAITER);
+	moveClawLiftDown(0);
+	closeClaw(50);
+	wait1Msec(700);
+	closeClaw(0);
+	moveLiftUpToConeHeightAndRelease(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
+	wait1Msec(GLOBAL_WAITER);
+	openClaw(50);
+	wait1Msec(225);
+	stopClaw();*/
+	moveLiftUpAndStop(LIFT_PICK_MOBILE, powerLiftUp);
+	MoveAccel(800, -100);
+	wait1Msec(GLOBAL_WAITER);
+	TurnGyro(500, -50);
+	wait1Msec(GLOBAL_WAITER);
+	MoveAccel(250, -100);
+	wait1Msec(GLOBAL_WAITER);
+	TurnGyro(750, -50);
+	wait1Msec(GLOBAL_WAITER);
+	MoveAccel(300, 70);
+	wait1Msec(GLOBAL_WAITER);
+	MoveAccel(80, 30);
+	MoveHelper(20);
+	moveMobileLiftDownAndStop();
+	wait1Msec(GLOBAL_WAITER);
+	moveMobileLiftUp(120);
+	wait1Msec(200);
+	moveMobileLiftUp(0);
+	MoveAccel(300, -80);
+
+	writeDebugStreamLine("autonomous) Time: %d", nPgmTime - startTime);
 }
 
 // END LCD
