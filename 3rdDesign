@@ -53,7 +53,7 @@ const int MAX_MOBILELIFT = 1500;
 // const int MAX_LIFT = 1600;
 const int MAX_LIFT = 4000;
 const int MIN_LIFT = 2040; //620
-const int FEED_LIFT = 2640;
+const int FEED_LIFT = 3500;
 
 const int FEED_CLAWLIFT = 2200;
 const int GLOBAL_WAITER = 100;
@@ -74,7 +74,7 @@ const int powerClawLiftDown = 80;
 
 string LIFT_STATUS = "";
 
-int CONE_COUNT = 0;
+int CONE_COUNT = 5;
 
 // ---------------------------------------
 // TASKS
@@ -448,8 +448,8 @@ void LiftDownPickUpClawLiftUpLiftDown_PART2(int liftValue, bool manualFeed)
 		return;
 	}
 
-	// int tcur = getLiftPosition();
-	// writeDebugStreamLine("LiftDownPickUpClawLiftUpLiftDown) CONE_COUNT: %d, target: %d, lift: %d", CONE_COUNT, target,  tcur);
+	int tcur = getLiftPosition();
+	writeDebugStreamLine("LiftDownPickUpClawLiftUpLiftDown) CONE_COUNT: %d, target: %d, lift: %d", CONE_COUNT, target,  tcur);
 
 
 	// CLAW LIFT UP
