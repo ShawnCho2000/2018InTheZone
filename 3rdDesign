@@ -7,8 +7,9 @@
 #pragma config(Sensor, dgtl1,  clawLiftUp,     sensorTouch)
 #pragma config(Sensor, dgtl3,  clawLiftDown,   sensorTouch)
 #pragma config(Sensor, dgtl4,  liftDown,       sensorTouch)
-#pragma config(Sensor, dgtl5,  clawLiftPosition, sensorNone)
-#pragma config(Sensor, dgtl6,  coneHeight,     sensorNone)
+#pragma config(Sensor, dgtl5,  mobileLiftDown, sensorTouch)
+#pragma config(Sensor, dgtl11, coneHeight,     sensorNone)
+#pragma config(Sensor, dgtl12, clawLiftPosition, sensorNone)
 #pragma config(Motor,  port1,           clawMotor,     tmotorVex393HighSpeed_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           wheelLeft,     tmotorVex393HighSpeed_MC29, openLoop)
 #pragma config(Motor,  port3,           wheelRight,    tmotorVex393HighSpeed_MC29, openLoop)
@@ -49,11 +50,14 @@
 
 const int MAX_CLAWLIFT = 3100;
 const int MIN_CLAWLIFT = 2100;
-const int MAX_MOBILELIFT = 1500;
+const int MAX_MOBILELIFT = 3900;
+const int REDUCE_MOBILELIFT = 2800;
+const int STOP_MOBILELIFT = 2400;
+
 // const int MAX_LIFT = 1600;
 const int MAX_LIFT = 4000;
 const int MIN_LIFT = 2040; //620
-const int FEED_LIFT = 3500;
+const int FEED_LIFT = 2640;
 
 const int FEED_CLAWLIFT = 2200;
 const int GLOBAL_WAITER = 100;
@@ -103,6 +107,7 @@ void moveLiftUpAndStopAuton(int distance, int power);
 bool moveLiftDownAndStop(int distance, int power);
 bool moveLiftDownAndHold_Touch(int power);
 bool moveLiftDownAndStop_Touch(int power);
+bool moveLiftUpAndHold_Smart(int distance, int power);
 
 // CLAW LIFT
 void moveClawLift(int power);
@@ -249,8 +254,8 @@ task move()
 		int ch1 = vexRT[Ch1];
 		int ch3 = vexRT[Ch3];
 
-		motor[wheelLeft] = ch3 + ch1;
-		motor[wheelRight] = -(ch3 - ch1);
+		motor[wheelLeft] = -ch3 + ch1;
+		motor[wheelRight] = -(-ch3 - ch1);
 
 		if (abs(motor[wheelRight]) < 17 || abs(motor[wheelLeft]) < 17)
 		{
@@ -279,7 +284,10 @@ task lift()
 
 			}
 			else if (vexRT[Btn7R] == 1){
-				moveMobileLiftDown(30);
+				moveMobileLiftDown(FULLPOWER);
+			}
+			else if (vexRT[Btn7L] == 1){
+				moveMobileLiftUp(FULLPOWER);
 			}
 
 			// if (vexRT[Btn5U] == 0 && vexRT[Btn5D] == 0){
@@ -290,7 +298,7 @@ task lift()
 				stopLift();
 			}
 
-			if (vexRT[Btn7R] == 0){
+			if (vexRT[Btn7R] == 0 && vexRT[Btn7L] == 0){
 				stopMobileLift();
 			}
 		}
@@ -348,13 +356,16 @@ task lift()
 			// 	stopClawLift();
 			// }
 			else if (vexRT[Btn7R] == 1){
-				moveMobileLiftDownToRelease(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
+				// moveMobileLiftDownToRelease(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
+				moveMobileLiftDownAndStop();
 				// moveMobileLiftDownAndStop(750, 80);
 				// moveMobileLiftDown(30);
 			}
 			else if (vexRT[Btn7L] == 1){
 				//moveMobileLiftUpToStack(powerliftUp, MAX_CLAWLIFT, powerClawLiftUp);
-				moveMobileLiftUp(127);
+				// moveMobileLiftUp(FULLPOWER);
+				moveMobileLiftUpAndStop();
+
 			}
 			else if (vexRT[Btn8U] == 1){
 				CONE_COUNT++;
@@ -388,7 +399,7 @@ void LiftDownPickUpClawLiftUpLiftDown_PART1(int liftValue, bool manualFeed)
 {
 	// READY PICKUP
 	openClaw(FULLPOWER);
-	wait1Msec(200);
+	wait1Msec(300);
 
 	stopClaw();
 
@@ -442,7 +453,12 @@ void LiftDownPickUpClawLiftUpLiftDown_PART2(int liftValue, bool manualFeed)
 	// CONE HOLD
 	closeClaw(10);
 
+	moveClawLiftUp(FULLPOWER);
+
+	wait1Msec(100);
+
 	// LIFT UP
+	// ret = moveLiftUpAndHold_Smart(target, FULLPOWER);
 	ret = moveLiftUpAndHold(target, FULLPOWER);
 	if (!ret){
 		return;
@@ -454,6 +470,7 @@ void LiftDownPickUpClawLiftUpLiftDown_PART2(int liftValue, bool manualFeed)
 
 	// CLAW LIFT UP
 	moveClawLiftUpAndStop(FULLPOWER);
+
 
 	// PUSH CONE DOWN
 	if (CONE_COUNT < 2){
@@ -776,7 +793,6 @@ int getClawLiftUp()
 	return SensorValue(clawLiftUp);
 }
 
-
 int getClawLiftPosition()
 {
 	return SensorValue(clawLiftPosition);
@@ -786,6 +802,13 @@ int getMobileLiftPosition()
 {
 	return SensorValue(mobileLiftPosition);
 }
+
+int getMobileLiftDown()
+{
+	return SensorValue(mobileLiftDown);
+}
+
+
 
 // END SENSORS
 
@@ -1098,6 +1121,81 @@ void moveLiftUpAndStop(int distance, int power) {
 	stopLift();
 }
 
+
+bool moveLiftUpAndHold_Smart(int distance, int power) {
+
+	float offset = 0;
+	int current = getLiftPosition();
+	// int clawLiftUp = getClawLiftUp();
+	float clawLiftStart = (distance * 1) / 6;
+
+	// int offset = getLiftTargetPosition();
+	// int target = liftValue + offset;
+
+	while (current + offset < distance){
+		// clearTimer(T2);
+		// while (true){
+
+		wait1Msec(50);
+
+		int previous = current;
+
+
+		moveLiftUp(power);
+		if (vexRT[Btn8L] == 1){
+			return false;
+		}
+
+
+		// if ( time1[T2] >= 10000)) {
+		// 	return false;
+		// }
+
+		// if (current >= MAX_LIFT) {
+		// 	holdLift();
+		// }
+
+		current = getLiftPosition();
+
+		if (current > clawLiftStart){
+			writeDebugStreamLine("moveClawLiftUp");
+			moveClawLiftUp(FULLPOWER);
+		}
+
+		// clawLiftUp = getClawLiftUp();
+		// if (clawLiftUp == 0){
+		// 	writeDebugStreamLine("stopClawLift");
+		// 	stopClawLift();
+		// }
+
+
+		offset = current - previous;
+		offset = offset * 5;
+
+
+		// if (current + offset >= distance && clawLiftUp != 1)
+		// {
+		// 	writeDebugStreamLine("hold");
+		// 	holdLift();
+		// }
+		// else if (current + offset < distance && clawLiftUp == 1)
+		// {
+		// 	writeDebugStreamLine("stopClawLift");
+		// 	stopClawLift();
+		// }
+		// else if (current + offset >= distance && clawLiftUp == 1)
+		// {
+		// 	writeDebugStreamLine("break");
+		// 	break;
+		// }
+
+	}
+	holdLift();
+
+	return true;
+}
+
+
 bool moveLiftUpAndHold(int distance, int power) {
 
 	float offset = 0;
@@ -1402,7 +1500,7 @@ void moveMobileLiftDownToReleaseAuton(int powerLift, int distanceClawLift, int p
 void moveMobileLiftUpAndStop() {
 
 	while (getMobileLiftPosition() < MAX_MOBILELIFT){
-		moveMobileLiftUp(120);
+		moveMobileLiftUp(FULLPOWER);
 		if (vexRT[Btn8L] == 1)
 		{
 			break;
@@ -1446,21 +1544,45 @@ void moveMobileLiftDownToRelease(int powerLift, int distanceClawLift, int powerC
 
 void moveMobileLiftDownAndStop() {
 
-	while (getMobileLiftPosition() > MAX_MOBILELIFT){
-		moveMobileLiftDown(120);
-		if (vexRT[Btn8L] == 1)
-		{
-			break;
+	// if (CONE_COUNT < 7)
+	if (false)
+	{
+		while (getMobileLiftPosition() > STOP_MOBILELIFT){
+			moveMobileLiftDown(FULLPOWER);
+			if (vexRT[Btn8L] == 1)
+			{
+				break;
+			}
+		}
+
+		while (getMobileLiftDown() == 0){
+			moveMobileLiftDown(60);
+			if (vexRT[Btn8L] == 1)
+			{
+				break;
+			}
+		}
+	}
+	else
+	{
+		while (getMobileLiftPosition() > REDUCE_MOBILELIFT){
+			moveMobileLiftDown(FULLPOWER);
+			if (vexRT[Btn8L] == 1)
+			{
+				break;
+			}
+		}
+
+		while (getMobileLiftPosition() > STOP_MOBILELIFT){
+			moveMobileLiftDown(60);
+			if (vexRT[Btn8L] == 1)
+			{
+				break;
+			}
 		}
 	}
 
-	while (getMobileLiftPosition() > 750){
-		moveMobileLiftDown(60);
-		if (vexRT[Btn8L] == 1)
-		{
-			break;
-		}
-	}
+	CONE_COUNT = 0;
 
 	stopMobileLift();
 }
