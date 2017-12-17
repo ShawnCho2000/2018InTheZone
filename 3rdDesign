@@ -61,7 +61,7 @@ const int MAX_LIFT = 3800;
 const int MIN_LIFT = 2040; //620
 const int FEED_LIFT = 2640;
 const int LIFT_PICK_MOBILE = 2200;
-const int STATIONARY_LIFT = 2800;
+const int STATIONARY_LIFT = 2800 + 100;
 
 const int FEED_CLAWLIFT = 2200;
 const int GLOBAL_WAITER = 100;
@@ -237,7 +237,7 @@ task autonomous()
 	{
 		autonRed();
 	}
-	else if (autonomousMode == 2) 
+	else if (autonomousMode == 2)
 	{
 		autonRed2();
 	}
@@ -599,7 +599,7 @@ void moveLiftUpForStationaryGoalAuton(int liftValue)
 
 	/*ret = moveLiftDownAndHold_Touch(powerliftDown);
 	if (!ret){
-		return;
+	return;
 	}
 
 
@@ -1830,7 +1830,7 @@ void moveMobileLiftDownToPickUp() {
 
 void moveMobileLiftDownToPickUpAuton() {
 	if (CONE_COUNT < 4){
-		closeClaw(5);
+		closeClaw(10);
 	}
 
 	bool ret = moveLiftUpAndStop(LIFT_PICK_MOBILE, FULLPOWER);
@@ -1871,6 +1871,10 @@ void moveMobileLiftDownAndStop() {
 		if (getMobileLiftPosition() < STOP_MOBILELIFT){
 			openClaw(FULLPOWER);
 		}
+
+		int tcur = getLiftPosition();
+		moveLiftUpAndStop(tcur + 50, 30);
+
 	}
 
 	stopClaw();
@@ -2288,16 +2292,16 @@ void autonRed() {
 	wait1Msec(GLOBAL_WAITER + 200);
 	TurnGyro(350, -50);
 	wait1Msec(GLOBAL_WAITER + 200);
-	MoveAccel(350, -100);
+	MoveAccel(350 + 100, -100);
 	wait1Msec(GLOBAL_WAITER + 200);
-	TurnGyro(650 + 150, -50);
+	TurnGyro(650 + 150, -70);
 	wait1Msec(GLOBAL_WAITER + 200);
-	MoveAccel(400, 90);
+	MoveAccel(400, 100);
 	wait1Msec(GLOBAL_WAITER);
 	moveMobileLiftDownAndStopAuton(HIGHGOAL_MOBILELIFT);
 	MoveHelper(50);
 	wait1Msec(500);
-	MoveHelper(0);	
+	MoveHelper(0);
 	wait1Msec(GLOBAL_WAITER);
 	MoveAccel(300, -50);
 	stopAll();
@@ -2305,11 +2309,15 @@ void autonRed() {
 }
 
 void autonRed2() {
-	closeClaw(5);
+	closeClaw(10);
 	wait1Msec(300);
 	MoveHelper(30);
 	moveLiftUpForStationaryGoalAuton(STATIONARY_LIFT);
 	MoveAccel(300, -30);
+	wait1Msec(GLOBAL_WAITER);
+	TurnGyro(750, 70);
+	wait1Msec(GLOBAL_WAITER + 200);
+	MoveAccel(700, 50);
 	stopAll();
 }
 
