@@ -53,7 +53,7 @@
 //Main competition background code...do not modify!
 #include "Vex_Competition_Includes.c"
 
-const int MAX_CLAWLIFT = 3300;
+const int MAX_CLAWLIFT = 3200;
 const int MIN_CLAWLIFT = 1000; //2100 + 300;
 const int MID_CLAWLIFT = (MAX_CLAWLIFT + MIN_CLAWLIFT) / 2;
 const int MAX_MOBILELIFT = 3900;
@@ -119,6 +119,7 @@ void moveLift(int power);
 void moveLiftUp(int power);
 void moveLiftDown(int power);
 void holdLift();
+void holdLiftAuton();
 void holdDownLift();
 
 bool startAuton(int power);
@@ -145,6 +146,7 @@ void closeClaw(int power);
 // MOBILE LIFT
 void moveMobileLift(int power);
 void moveMobileLiftUp(int power);
+void moveMobileLiftUpAuton();
 void moveMobileLiftDown(int power);
 void moveMobileLiftUpAndStop();
 void moveMobileLiftDownAndStop();
@@ -508,8 +510,8 @@ void LiftDownPickUpClawLiftUpLiftDown_PART1_1(int liftValue, bool manualFeed)
 	{
 		bool ret = moveLiftDownAndStop(MIN_LIFT, powerliftDown);
 		if (ret) {
-			//int tcur = getLiftPosition();
-			// moveLiftUpAndStop(tcur + 20, 30);
+			int tcur = getLiftPosition();
+			moveLiftUpAndStop(tcur + 20, 30);
 		}
 	}
 
@@ -544,7 +546,7 @@ void LiftDownPickUpClawLiftUpLiftDown_PART2_1(int liftValue, bool manualFeed)
 	}
 
 	// PICK UP CONE AND HOLD
-	wait1Msec(350);
+	wait1Msec(450);
 
 	// CONE HOLD
 	closeClaw(10);
@@ -961,8 +963,6 @@ task clawLift()
 
 
 		if (vexRT[Btn8R] == 1) {
-
-
 			if (vexRT[Btn5U] == 1){
 				moveClawLiftUpAndStop(MAX_CLAWLIFT, FULLPOWER);
 			}
@@ -981,7 +981,6 @@ task clawLift()
 				moveClawLiftDown(powerClawLiftDown);
 			}
 		}
-
 
 		if (LIFT_STATUS == "manual" && vexRT[Btn5U] == 0 && vexRT[Btn5D] == 0){
 			stopClawLift();
@@ -1234,6 +1233,11 @@ void holdLift(){
 	LIFT_STATUS = "holdLift";
 
 	moveLift(12);
+}
+
+void holdLiftAuton() {
+	LIFT_STATUS = "holdLift";
+	moveLift(20);
 }
 
 void holdDownLift(){
@@ -1672,6 +1676,12 @@ void moveMobileLiftUpAndStop() {
 	CONE_COUNT = 0;
 }
 
+void moveMobileLiftUpAuton(){
+	while (getMobileLiftDown() == 1) {
+		moveMobileLiftUp(FULLPOWER);
+	}
+}
+
 void moveMobileLiftDownToPickUp() {
 	if (0 < CONE_COUNT && CONE_COUNT < 4){
 		openClaw(FULLPOWER);
@@ -1693,10 +1703,12 @@ void moveMobileLiftDownToPickUpAuton() {
 		closeClaw(10);
 	}
 
-	bool ret = moveLiftUpAndStop(LIFT_PICK_MOBILE, FULLPOWER);
-	if (!ret){
-		return;
-	}
+	//bool ret = moveLiftUpAndHold(LIFT_PICK_MOBILE, FULLPOWER);
+	//if (!ret){
+	//	return;
+	//}
+
+	//holdLiftAuton();
 
 	// wait1Msec(200);
 	// moveClawLiftUpAndStop(FULLPOWER);
@@ -1755,6 +1767,10 @@ void moveMobileLiftDownAndStop() {
 void moveMobileLiftDownAndStopAuton(int distance) {
 	if (distance == 0) {
 		while (getMobileLiftDown() == 0){
+			bool ret = moveLiftUpAndHold(LIFT_PICK_MOBILE, FULLPOWER);
+			if (!ret){
+				return;
+			}
 			wait1Msec(50);
 			moveMobileLiftDown(FULLPOWER);
 			if (vexRT[Btn8L] == 1)
@@ -2154,35 +2170,20 @@ void displayBatteryLevelOnLCD(int autonomousModeValue)
 }
 
 
-void autonRed1() {
-	//int powerToMove = 70;
-
-	MoveIEM(500, 110);
-	wait1Msec(GLOBAL_WAITER);
-	moveMobileLiftDownAndStopAuton(HIGHGOAL_MOBILELIFT);
-	MoveHelper(50);
-	wait1Msec(500);
-	MoveHelper(0);
-	wait1Msec(GLOBAL_WAITER);
-	MoveIEM(400, 110);
-	stopAll();
-
-
-}
 void autonRed() {
-	long startTime = nPgmTime;
+	//int powerToMove = 70;
 	int powerToMove = 70;
-
 	moveMobileLiftDownToPickUpAuton();
+	//moveLiftUp(20);
 
-	bool ret = MoveLine(Back, powerToMove);
+	bool ret = MoveLine(Back, powerToMove + 15);
 	if (!ret){
 		return;
 	}
 
 	writeDebugStreamLine("1");
-	wait1Msec(500);
-	ret = MoveLineStop(Back, powerToMove - 30);
+	wait1Msec(300);
+	ret = MoveLineStop(Back, powerToMove - 15);
 	if (!ret){
 		return;
 	}
@@ -2199,7 +2200,11 @@ void autonRed() {
 	// if (!ret){
 	// 	return;
 	// }
-
+	moveLiftDownAndStop(MIN_LIFT, powerliftDown);
+	wait1Msec(GLOBAL_WAITER);
+	openClaw(POWER_CLAW_OPEN); //for one cone only!
+	wait1Msec(200); //for one cone only!
+	stopClaw(); //for one cone only!
 
 	ret = MoveLine(Back, -powerToMove);
 	if (!ret){
@@ -2207,7 +2212,7 @@ void autonRed() {
 	}
 
 	wait1Msec(1000);
-	ret = MoveLineStop(Back, -(powerToMove - 30));
+	ret = MoveLineStop(Back, -(powerToMove - 20));
 	if (!ret){
 		return;
 	}
@@ -2219,15 +2224,21 @@ void autonRed() {
 	// }
 
 	wait1Msec(GLOBAL_WAITER + 200);
-	ret = TurnLine(Back, -(powerToMove-30));
+	ret = TurnLine(Back, -(powerToMove-25));
 	if (!ret){
 		return;
 	}
+	wait1Msec(GLOBAL_WAITER + 200);
+	ret = TurnLine(Back, (powerToMove-25));
+	if (!ret){
+		return;
+	}
+	wait1Msec(GLOBAL_WAITER);
 
 	MoveIEM(490, -powerToMove);
 
 	wait1Msec(GLOBAL_WAITER + 200);
-	ret = TurnLine(Left, -(powerToMove-20));
+	ret = TurnLine(Left, -(powerToMove-10));
 	if (!ret){
 		return;
 	}
@@ -2239,7 +2250,148 @@ void autonRed() {
 	wait1Msec(500);
 	MoveHelper(0);
 	wait1Msec(GLOBAL_WAITER);
-	MoveIEM(400, -110);
+	MoveHelper(-70);
+	wait1Msec(GLOBAL_WAITER + 200);
+	MoveHelper(0);
+	wait1Msec(GLOBAL_WAITER);
+	moveMobileLiftUpAndStop();
+	wait1Msec(GLOBAL_WAITER);
+	MoveIEM(250, -100);
+	wait1Msec(GLOBAL_WAITER);
+	moveMobileLiftUpAndStop();
+	wait1Msec(1000);
+	TurnGyro(800, -50); //turn left
+	wait1Msec(GLOBAL_WAITER);
+	MoveIEM(400, -80); //move back
+	wait1Msec(GLOBAL_WAITER);
+	TurnGyro(350, -50); //turn left to face wall
+	wait1Msec(GLOBAL_WAITER + 200);
+	MoveIEM(350, -50); //adjust with wall
+	wait1Msec(1000);
+	ret = MoveLineStop(Back, 35); //go forward from wall
+	if (!ret){
+		return;
+	}
+	wait1Msec(1000);
+	TurnGyro(350, -50); //turn left just a bit to align with pole
+	wait1Msec(GLOBAL_WAITER + 300);
+	ret = moveLiftUpAndHold(LIFT_PICK_MOBILE, FULLPOWER);
+			if (!ret){
+				return;
+			}
+			wait1Msec(50);
+	moveMobileLiftDownAndStop(); //deploy mobile goal lift
+	wait1Msec(GLOBAL_WAITER);
+	MoveIEM(200, 100); //move to goal
+	wait1Msec(GLOBAL_WAITER);
+	moveMobileLiftUpAndStop(); //pick up goal
+	wait1Msec(GLOBAL_WAITER);
+	ret = MoveLineStop(Back, -40); //go forward from wall
+	if (!ret){
+		return;
+	}
+	wait1Msec(1000);
+	TurnGyro(2000, -50); //turn 180 degrees
+	wait1Msec(GLOBAL_WAITER);
+	ret = MoveLineStop(Back, 40); //go forward from wall
+	if (!ret){
+		return;
+	}
+	wait1Msec(1000);
+	moveMobileLiftDownAndStop(); //deploy mobile goal again
+	wait1Msec(GLOBAL_WAITER);
+	MoveIEM(200, -50); //move back
+	stopAll();
+
+}
+void autonRed1() {
+	long startTime = nPgmTime;
+	int powerToMove = 70;
+	moveMobileLiftDownToPickUpAuton();
+	//moveLiftUp(20);
+
+	bool ret = MoveLine(Back, powerToMove + 15);
+	if (!ret){
+		return;
+	}
+
+	writeDebugStreamLine("1");
+	wait1Msec(300);
+	ret = MoveLineStop(Back, powerToMove - 15);
+	if (!ret){
+		return;
+	}
+
+	writeDebugStreamLine("2");
+	wait1Msec(GLOBAL_WAITER);
+	moveMobileLiftUpToStackAuton(FULLPOWER, MAX_CLAWLIFT, powerClawLiftUp);
+	wait1Msec(GLOBAL_WAITER);
+
+	// MoveHelper(-FULLPOWER);
+	// wait1Msec(1500);
+
+	// ret = MoveLine(Left, -FULLPOWER);
+	// if (!ret){
+	// 	return;
+	// }
+	moveLiftDownAndStop(MIN_LIFT, powerliftDown);
+	wait1Msec(GLOBAL_WAITER);
+	openClaw(POWER_CLAW_OPEN); //for one cone only!
+	wait1Msec(200); //for one cone only!
+	stopClaw(); //for one cone only!
+
+	ret = MoveLine(Back, -powerToMove);
+	if (!ret){
+		return;
+	}
+
+	wait1Msec(1000);
+	ret = MoveLineStop(Back, -(powerToMove - 20));
+	if (!ret){
+		return;
+	}
+
+	// // wait1Msec(100);
+	// ret = MoveLineStop(Left, -30);
+	// if (!ret){
+	// 	return;
+	// }
+
+	wait1Msec(GLOBAL_WAITER + 200);
+	ret = TurnLine(Back, -(powerToMove-25));
+	if (!ret){
+		return;
+	}
+	wait1Msec(GLOBAL_WAITER + 200);
+	ret = TurnLine(Back, (powerToMove-25));
+	if (!ret){
+		return;
+	}
+	wait1Msec(GLOBAL_WAITER);
+
+	MoveIEM(490, -powerToMove);
+
+	wait1Msec(GLOBAL_WAITER + 200);
+
+	ret = TurnLine(Left, -(powerToMove-10));
+	if (!ret){
+		return;
+	}
+
+	MoveIEM(500, 110);
+	wait1Msec(GLOBAL_WAITER);
+	moveMobileLiftDownAndStopAuton(HIGHGOAL_MOBILELIFT);
+	MoveHelper(50);
+	wait1Msec(500);
+	MoveHelper(0);
+	wait1Msec(GLOBAL_WAITER);
+	MoveHelper(-70);
+	wait1Msec(GLOBAL_WAITER + 200);
+	MoveHelper(0);
+	wait1Msec(GLOBAL_WAITER);
+	moveMobileLiftUpAuton();
+	wait1Msec(GLOBAL_WAITER);
+	MoveIEM(250, -100);
 	stopAll();
 
 	// MoveHelper(40);
@@ -2255,14 +2407,8 @@ void autonRed() {
 
 	MoveHelper(0);
 
-	/*
-	wait1Msec(GLOBAL_WAITER);
-	moveLiftDownAndStop(280, 50);
-	wait1Msec(GLOBAL_WAITER);
-	openClaw(POWER_CLAW_OPEN); //for one cone only!
-	wait1Msec(500); //for one cone only!
-	stopClaw(); //for one cone only!
 
+	/*
 	moveLiftUpAndStop(LIFT_PICK_MOBILE + 100, powerLiftUp);
 	//MoveAccel(1200, -70);
 	wait1Msec(GLOBAL_WAITER + 200);
@@ -2291,12 +2437,12 @@ void autonRed2() {
 	wait1Msec(300);
 	MoveHelper(30);
 	moveLiftUpForStationaryGoalAuton(STATIONARY_LIFT);
-	//MoveAccel(300, -30);
+	MoveIEM(300, -30);
 	wait1Msec(GLOBAL_WAITER);
-	TurnGyro(750, 70);
-	wait1Msec(GLOBAL_WAITER + 200);
+	//TurnGyro(750, 70);
+	//wait1Msec(GLOBAL_WAITER + 200);
 	//MoveAccel(700, 50);
 	stopAll();
 }
 
-// END LCD
+// END LC
