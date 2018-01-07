@@ -53,12 +53,14 @@
 //Main competition background code...do not modify!
 #include "Vex_Competition_Includes.c"
 
-const int MAX_CLAWLIFT = 3200;
-const int MIN_CLAWLIFT = 1000; //2100 + 300;
+const int MAX_CLAWLIFT = 3000;
+const int MIN_CLAWLIFT = 1100; //2100 + 300;
 const int MID_CLAWLIFT = (MAX_CLAWLIFT + MIN_CLAWLIFT) / 2;
 const int MAX_MOBILELIFT = 3900;
 const int STOP_MOBILELIFT = 2800;
 const int HIGHGOAL_MOBILELIFT = 2800;
+const int DRIVING_MOBILELIFT = 2700;
+// const int HIGHGOAL_MOBILELIFT = 2800;
 
 
 // const int MAX_LIFT = 1600;
@@ -149,6 +151,7 @@ void moveMobileLiftUp(int power);
 void moveMobileLiftUpAuton();
 void moveMobileLiftDown(int power);
 void moveMobileLiftUpAndStop();
+void moveMobileLiftUpAndStopDrivingSkill();
 void moveMobileLiftDownAndStop();
 void moveMobileLiftDownAndStopAuton(int distance);
 void moveMobileLiftDownToPickUpAuton();
@@ -202,6 +205,7 @@ int getLineBack();
 void dropCone();
 void autonRed();
 void autonRed2();
+void programmingSkill();
 void stopAll();
 void stopLift();
 void stopClawLift();
@@ -302,6 +306,10 @@ task autonomous()
 	else if (autonomousMode == 2)
 	{
 		autonRed2();
+	}
+	else if (autonomousMode == 3)
+	{
+		programmingSkill();
 	}
 
 	// ..........................................................................
@@ -453,7 +461,12 @@ task lift()
 				}
 			}
 			else if (vexRT[Btn7L] == 1){
-				moveMobileLiftUpAndStop();
+				if (autonomousMode == 5){
+					moveMobileLiftUpAndStopDrivingSkill();
+				}
+				else{
+					moveMobileLiftUpAndStop();
+				}
 
 			}
 			else if (vexRT[Btn7R] == 1){
@@ -1676,6 +1689,21 @@ void moveMobileLiftUpAndStop() {
 	CONE_COUNT = 0;
 }
 
+void moveMobileLiftUpAndStopDrivingSkill() {
+
+	while (getMobileLiftPosition() < DRIVING_MOBILELIFT){
+		moveMobileLiftUp(FULLPOWER);
+		if (vexRT[Btn8L] == 1)
+		{
+			break;
+		}
+	}
+
+	stopMobileLift();
+
+	CONE_COUNT = 0;
+}
+
 void moveMobileLiftUpAuton(){
 	while (getMobileLiftDown() == 1) {
 		moveMobileLiftUp(FULLPOWER);
@@ -2076,7 +2104,7 @@ void AutonomousSelector(int btnLCD)
 		}
 		else if (button == 4 || vexRT[Btn6D] == 1)
 		{
-			if (autonomousModeValue < 4)
+			if (autonomousModeValue < 6)
 			{
 				autonomousModeValue++;
 			}
@@ -2112,12 +2140,17 @@ void DisplayAutonomousMode(int autonomousModeValue)
 		}
 	case 3:
 		{
-			text = "None";
+			text = "ProgSkill";
 			break;
 		}
 	case 4:
 		{
-			text = "ProgSkill";
+			text = "None";
+			break;
+		}
+	case 5:
+		{
+			text = "drivingSkill";
 			break;
 		}
 	}
@@ -2170,7 +2203,7 @@ void displayBatteryLevelOnLCD(int autonomousModeValue)
 }
 
 
-void autonRed() {
+void programmingSkill() {
 	//int powerToMove = 70;
 	int powerToMove = 70;
 	moveMobileLiftDownToPickUpAuton();
@@ -2304,7 +2337,8 @@ void autonRed() {
 	stopAll();
 
 }
-void autonRed1() {
+
+void autonRed() {
 	long startTime = nPgmTime;
 	int powerToMove = 70;
 	moveMobileLiftDownToPickUpAuton();
