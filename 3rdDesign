@@ -53,7 +53,7 @@
 //Main competition background code...do not modify!
 #include "Vex_Competition_Includes.c"
 
-const int MAX_CLAWLIFT = 3000;
+const int MAX_CLAWLIFT = 3300;
 const int MIN_CLAWLIFT = 1100; //2100 + 300;
 const int MID_CLAWLIFT = (MAX_CLAWLIFT + MIN_CLAWLIFT) / 2;
 const int MAX_MOBILELIFT = 3900;
@@ -129,6 +129,7 @@ bool moveLiftUpAndStop(int distance, int power);
 bool moveLiftUpAndHold(int distance, int power);
 bool moveLiftDownAndStop(int distance, int power);
 bool moveLiftDownAndHold(int distance, int power);
+bool moveLiftUpAndHoldAuton(int distance, int power);
 bool moveLiftDownAndHold_Touch(int power);
 bool moveLiftDownAndStop_Touch(int power);
 bool moveLiftUpAndHold_Smart(int distance, int power);
@@ -499,7 +500,7 @@ void LiftDownPickUpClawLiftUpLiftDown_PART1_1(int liftValue, bool manualFeed)
 
 	LIFT_STATUS = "LiftDownPickUpClawLiftUpLiftDown_PART1_1";
 	// READY PICKUP
-	openClaw(FULLPOWER / 2);
+	openClaw(FULLPOWER);
 	wait1Msec(300);
 
 	int offset = getLiftTargetPosition(manualFeed);
@@ -517,6 +518,8 @@ void LiftDownPickUpClawLiftUpLiftDown_PART1_1(int liftValue, bool manualFeed)
 	// closeClaw(POWER_CLAW_OPEN);
 
 	// CLAW LIFT DOWN
+	moveClawLiftDown(powerClawLiftDown);
+	wait1Msec(500);
 	moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown);
 
 	if (!manualFeed)
@@ -551,7 +554,8 @@ void LiftDownPickUpClawLiftUpLiftDown_PART2_1(int liftValue, bool manualFeed)
 	}
 	else {
 		// moveLift(-((powerliftDown * 2) / 3));
-		// moveLift(-powerliftDown);
+		moveLift(-FULLPOWER);
+		wait1Msec(300);
 		ret = moveLiftDownAndHold_Touch(FULLPOWER);
 		if (!ret){
 			return;
@@ -681,7 +685,8 @@ bool scoreStationaryGoal_Part1()
 	}
 
 	moveLift(20);
-
+	moveClawLiftDown(powerClawLiftDown);
+	wait1Msec(500);
 	ret = moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown / 2);
 	if (!ret){
 		return false;
@@ -703,7 +708,7 @@ bool scoreStationaryGoal_Part2()
 	offset = getLiftTargetPositionForStationaryGoal();
 	int targetSG = STATIONARY_LIFT + offset;
 
-	bool ret = moveLiftDownAndStop(targetSG - 100, powerliftDown);
+	bool ret = moveLiftDownAndStop(targetSG - 0, powerliftDown);
 
 	if (!ret){
 		return false;
@@ -1250,7 +1255,7 @@ void holdLift(){
 
 void holdLiftAuton() {
 	LIFT_STATUS = "holdLift";
-	moveLift(20);
+	moveLift(25);
 }
 
 void holdDownLift(){
@@ -1444,6 +1449,36 @@ bool moveLiftUpAndHold(int distance, int power) {
 	return true;
 }
 
+bool moveLiftUpAndHoldAuton(int distance, int power) {
+
+	float offset = 0;
+	int current = getLiftPosition();
+
+	while (current + offset < distance){
+
+		wait1Msec(50);
+
+		int previous = current;
+
+
+		moveLiftUp(power);
+		if (vexRT[Btn8L] == 1)
+		{
+			stopLift();
+			return false;
+		}
+
+		current = getLiftPosition();
+
+		offset = current - previous;
+		offset = offset * 5;
+
+	}
+	holdLiftAuton();
+
+	return true;
+}
+
 bool moveLiftDownAndHold_Touch(int power) {
 
 	clearTimer(T2);
@@ -1451,7 +1486,7 @@ bool moveLiftDownAndHold_Touch(int power) {
 		// wait1Msec(50);
 
 		moveLift(-power);
-		if (vexRT[Btn8L] == 1 || time1[T2] > 1000)
+		if (vexRT[Btn8L] == 1 || time1[T2] > 2000)
 		{
 			stopLift();
 			return false;
@@ -1614,7 +1649,7 @@ bool moveClawLiftDownAndStop(int distance, int power) {
 			return false;
 		}
 
-		if ( time1[T4] >= 1200) {
+		if (time1[T4] >= 2000) {
 			return false;
 		}
 
@@ -1795,7 +1830,7 @@ void moveMobileLiftDownAndStop() {
 void moveMobileLiftDownAndStopAuton(int distance) {
 	if (distance == 0) {
 		while (getMobileLiftDown() == 0){
-			bool ret = moveLiftUpAndHold(LIFT_PICK_MOBILE, FULLPOWER);
+			bool ret = moveLiftUpAndHoldAuton(LIFT_PICK_MOBILE, FULLPOWER);
 			if (!ret){
 				return;
 			}
@@ -2268,7 +2303,7 @@ void programmingSkill() {
 	}
 	wait1Msec(GLOBAL_WAITER);
 
-	MoveIEM(490, -powerToMove);
+	MoveIEM(490, -(powerToMove + 10));
 
 	wait1Msec(GLOBAL_WAITER + 200);
 	ret = TurnLine(Left, -(powerToMove-10));
@@ -2306,14 +2341,14 @@ void programmingSkill() {
 		return;
 	}
 	wait1Msec(1000);
-	TurnGyro(350, -50); //turn left just a bit to align with pole
+	TurnGyro(275, -50); //turn left just a bit to align with pole
 	wait1Msec(GLOBAL_WAITER + 300);
 	ret = moveLiftUpAndHold(LIFT_PICK_MOBILE, FULLPOWER);
-			if (!ret){
-				return;
-			}
-			wait1Msec(50);
-	moveMobileLiftDownAndStop(); //deploy mobile goal lift
+	if (!ret){
+		return;
+	}
+	wait1Msec(50);
+	moveMobileLiftDownToPickUpAuton(); //deploy mobile goal lift
 	wait1Msec(GLOBAL_WAITER);
 	MoveIEM(200, 100); //move to goal
 	wait1Msec(GLOBAL_WAITER);
@@ -2351,7 +2386,7 @@ void autonRed() {
 
 	writeDebugStreamLine("1");
 	wait1Msec(300);
-	ret = MoveLineStop(Back, powerToMove - 15);
+	ret = MoveLineStop(Back, powerToMove - 20);
 	if (!ret){
 		return;
 	}
@@ -2392,7 +2427,7 @@ void autonRed() {
 	// }
 
 	wait1Msec(GLOBAL_WAITER + 200);
-	ret = TurnLine(Back, -(powerToMove-25));
+	ret = TurnLine(Back, -(powerToMove-20));
 	if (!ret){
 		return;
 	}
@@ -2403,7 +2438,7 @@ void autonRed() {
 	}
 	wait1Msec(GLOBAL_WAITER);
 
-	MoveIEM(490, -powerToMove);
+	MoveIEM(490, -(powerToMove + 10));
 
 	wait1Msec(GLOBAL_WAITER + 200);
 
