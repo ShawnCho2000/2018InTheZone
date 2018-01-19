@@ -214,6 +214,7 @@ void autonRed();
 void autonRed2();
 void programmingSkill();
 
+void HitBarAndAlign();
 bool Prepare_2ND_MG();
 bool programmingSkill_Pick_2nd_MG();
 bool programmingSkill_Pick_3rd_MG();
@@ -2088,7 +2089,7 @@ bool MoveLine(LineType lineType, int power) {
 		// writeDebugStreamLine("in");
 		// wait1Msec(20);
 
-		if (time1[T3] >= 2000){
+		if (time1[T3] >= 4000){
 			writeDebugStreamLine("timeout");
 			MoveHelper(0);
 			return false;
@@ -2241,7 +2242,7 @@ bool TurnLine(LineType lineType, int power) {
 		// writeDebugStreamLine("in");
 		// wait1Msec(50);
 
-		if (time1[T3] >= 2000){
+		if (time1[T3] >= 4000){
 
 			TurnHelper(0);
 			writeDebugStreamLine("timeout");
@@ -2459,6 +2460,20 @@ void displayBatteryLevelOnLCD(int autonomousModeValue)
 
 
 void programmingSkill() {
+
+
+
+	bool ret = Prepare_2ND_MG();
+	if (!ret){
+		return;
+	}
+
+	ret = programmingSkill_Pick_2nd_MG();
+	if (!ret){
+		return;
+	}
+
+
 	programmingSkill_Pick_3rd_MG();
 
 
@@ -2472,7 +2487,7 @@ void programmingSkill() {
 
 
 
-	bool ret = Prepare_2ND_MG();
+	ret = Prepare_2ND_MG();
 	if (!ret){
 		return;
 	}
@@ -2505,10 +2520,19 @@ bool programmingSkill_Pick_3rd_MG() {
 	wait1Msec(GLOBAL_WAITER + 200);
 	writeDebugStreamLine("8");
 
-	ret = TurnLine(Left, -(powerToMove - 20));  //align with MG
+	ret = TurnLine(Right, -(powerToMove - 20));  //align with MG
 		if (!ret){
 			return false;
 		}
+
+	wait1Msec(GLOBAL_WAITER + 200);
+
+	ret = TurnLine(Right, (powerToMove - 20));  //align with MG
+		if (!ret){
+			return false;
+		}
+
+	wait1Msec(GLOBAL_WAITER + 200);
 
 	// wait1Msec(GLOBAL_WAITER + 200);
 	// writeDebugStreamLine("8-1");
@@ -2528,41 +2552,10 @@ bool programmingSkill_Pick_3rd_MG() {
 	// writeDebugStreamLine("8-3");
 
 	// MoveIEM(200, -50);
-	MoveHelper(-40);
-
-	wait1Msec(GLOBAL_WAITER + 1000);
-
-	MoveHelper(0);
-	wait1Msec(GLOBAL_WAITER + 200);
-
-	// moveMobileLiftDownToPickUpAuton(); //deploy mobile goal lift
 
 
-	writeDebugStreamLine("8-4");
+	HitBarAndAlign();
 
-	// MoveHelper(powerToMove);
-	// wait1Msec(800);
-
-
-	MoveLineStop(Left, powerToMove - 45); // turn Right
-
-	// MoveLineStop(Right, powerToMove - 30);
-	wait1Msec(GLOBAL_WAITER + 200);
-
-
-	// writeDebugStreamLine("8-5");
-
-	// MoveLineStop(Right, -(powerToMove - 35));
-	// wait1Msec(GLOBAL_WAITER + 200);
-
-	TurnLine(Left, -(powerToMove - 40)); // turn left
-
-	wait1Msec(GLOBAL_WAITER + 200);
-
-
-	TurnLine(Left, powerToMove - 40); // turn Right
-
-	wait1Msec(GLOBAL_WAITER + 200);
 
 
 	moveMobileLiftDownToPickUpAuton(); // Deploy to pick up
@@ -2645,7 +2638,10 @@ bool programmingSkill_Pick_3rd_MG() {
 
 	writeDebugStreamLine("1010");
 
-	MoveIEM(500, 110 + 10);
+	MoveHelper(120);
+	wait1Msec(1000);
+	MoveHelper(0);
+	// MoveIEM(500, 110 + 10);
 	writeDebugStreamLine("1011");
 	wait1Msec(GLOBAL_WAITER);
 	moveMobileLiftDownAndStopAuton(HIGHGOAL_MOBILELIFT);
@@ -2801,6 +2797,42 @@ void programmingSkill1() {
 	stopAll();
 }
 
+void HitBarAndAlign(){
+	
+	int powerToMove = 70;
+
+	MoveHelper(-40);
+
+	wait1Msec(GLOBAL_WAITER + 1000);
+
+	MoveHelper(0);
+	wait1Msec(GLOBAL_WAITER + 200);
+
+	// moveMobileLiftDownToPickUpAuton(); //deploy mobile goal lift
+
+
+	writeDebugStreamLine("8-4");
+
+	// MoveHelper(powerToMove);
+	// wait1Msec(800);
+
+
+	MoveLineStop(Left, powerToMove - 45); // turn Right
+
+	// MoveLineStop(Right, powerToMove - 30);
+	wait1Msec(GLOBAL_WAITER + 200);
+
+
+	// TurnLine(Left, -(powerToMove - 30)); // turn left
+
+	// wait1Msec(GLOBAL_WAITER + 200);
+
+
+	// TurnLine(Left, powerToMove - 30); // turn Right
+
+	// wait1Msec(GLOBAL_WAITER + 200);
+}
+
 bool Prepare_2ND_MG(){
 
 	int powerToMove = 70;
@@ -2827,21 +2859,17 @@ bool Prepare_2ND_MG(){
 
 
 	writeDebugStreamLine("4");
-	MoveIEM(105 + 3, -80); //move back along line
+	MoveIEM(105 + 15, -80); //move back along line
 	wait1Msec(GLOBAL_WAITER + 200);
 
 	writeDebugStreamLine("5");
-	ret = TurnLine(Left, -(powerToMove - 20));  //align with line
+	ret = TurnLine(Left, -(powerToMove - 20 + 5));  //align with line
 	if (!ret){
 		return false;
 	}
 	writeDebugStreamLine("6");
 
-	wait1Msec(GLOBAL_WAITER + 200);
-	ret = TurnLine(Right, powerToMove - 35);  //align with MG
-	if (!ret){
-		return false;
-	}
+	HitBarAndAlign();
 
 	writeDebugStreamLine("7");
 
@@ -2855,22 +2883,63 @@ bool programmingSkill_Pick_2nd_MG(){
 	moveMobileLiftDownToPickUpAuton(); //deploy mobile goal lift
 	wait1Msec(GLOBAL_WAITER);
 
-	MoveIEM(580, powerToMove); //move forward to grab MG
+
+	MoveHelper(powerToMove); //move forward to grab MG
+	wait1Msec(GLOBAL_WAITER + 800);
+	MoveHelper(0); //move forward to grab MG
+
 	moveMobileLiftUpAndStop(); //pick up goal
 	wait1Msec(GLOBAL_WAITER + 200);
 
-	TurnHelper(powerToMove);
-	wait1Msec(GLOBAL_WAITER + 500);
-	writeDebugStreamLine("100");
+	writeDebugStreamLine("101-1");
 
-	bool ret = TurnLine(Back, powerToMove - 22); //turn left 180"
+	MoveHelper(-powerToMove + 25); //move forward to grab MG
+	wait1Msec(GLOBAL_WAITER + 800);
+
+	writeDebugStreamLine("101-1-1");
+
+	bool ret = MoveLineStop(Right, -(powerToMove - 40)); // move back
+	if (!ret){
+		return false;
+	}
+
+	ret = MoveLineStop(Right, (powerToMove - 40)); // move back
+	if (!ret){
+		return false;
+	}
+
+
+	// TurnHelper(powerToMove);
+	// wait1Msec(GLOBAL_WAITER + 500);
+	// writeDebugStreamLine("100");
+
+	writeDebugStreamLine("101-2");
+
+	wait1Msec(GLOBAL_WAITER + 200);
+
+
+
+	ret = TurnLine(Back, -powerToMove + 15); //turn left 180"
 	if (!ret){
 		return false;
 	}
 	wait1Msec(GLOBAL_WAITER + 200);
-	writeDebugStreamLine("101");
+	writeDebugStreamLine("101-3");
 
 
+	ret = TurnLine(Right, -powerToMove + 22); //turn left 180"
+	if (!ret){
+		return false;
+	}
+	writeDebugStreamLine("101-4");
+	wait1Msec(GLOBAL_WAITER + 200);
+
+
+	ret = TurnLine(Left, powerToMove - 25); //turn left 180"
+	if (!ret){
+		return false;
+	}
+	writeDebugStreamLine("101-4");
 	// ret = TurnLine(Back, powerToMove - 25); //turn left 180"
 	// if (!ret){
 	// 	return false;
@@ -2885,14 +2954,21 @@ bool programmingSkill_Pick_2nd_MG(){
 
 	writeDebugStreamLine("102");
 
-	MoveHelper(powerToMove);
-	wait1Msec(800);
-	writeDebugStreamLine("103");
+	// MoveHelper(powerToMove);
+	// wait1Msec(800);
+	// writeDebugStreamLine("103");
 
-	ret = MoveLineStop(Back, powerToMove - 20); //go forward to the bar
+	ret = MoveLineStop(Back, powerToMove - 25); //go forward to the bar
 	if (!ret){
 		return false;
 	}
+
+
+
+	MoveHelper(powerToMove - 40);
+	wait1Msec(500);
+	writeDebugStreamLine("103");
+	MoveHelper(0);
 
 	writeDebugStreamLine("104");
 	wait1Msec(GLOBAL_WAITER);
