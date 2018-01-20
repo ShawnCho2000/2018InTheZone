@@ -2919,7 +2919,7 @@ bool programmingSkill_Pick_2nd_MG(){
 
 
 
-	ret = TurnLine(Back, -powerToMove + 15); //turn left 180"
+	ret = TurnLine(Back, powerToMove - 15); //turn left 180"
 	if (!ret){
 		return false;
 	}
@@ -2927,19 +2927,27 @@ bool programmingSkill_Pick_2nd_MG(){
 	writeDebugStreamLine("101-3");
 
 
-	ret = TurnLine(Right, -powerToMove + 22); //turn left 180"
+	ret = TurnLine(Left, powerToMove - 15); //turn left 180"
 	if (!ret){
 		return false;
 	}
-	writeDebugStreamLine("101-4");
 	wait1Msec(GLOBAL_WAITER + 200);
-
-
-	ret = TurnLine(Left, powerToMove - 25); //turn left 180"
-	if (!ret){
-		return false;
-	}
 	writeDebugStreamLine("101-4");
+
+
+	// ret = TurnLine(Right, -powerToMove + 22); //turn left 180"
+	// if (!ret){
+	// 	return false;
+	// }
+	// writeDebugStreamLine("101-4");
+	// wait1Msec(GLOBAL_WAITER + 200);
+
+
+	// ret = TurnLine(Left, powerToMove - 25); //turn left 180"
+	// if (!ret){
+	// 	return false;
+	// }
+	// writeDebugStreamLine("101-4");
 	// ret = TurnLine(Back, powerToMove - 25); //turn left 180"
 	// if (!ret){
 	// 	return false;
