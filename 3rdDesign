@@ -94,7 +94,7 @@ typedef enum {
 
 // LineTypeStruct LineType = Back;
 
-int autonomousMode = 5;
+int autonomousMode = 1;
 const int drivingSkillMode = 7;
 // 6: ProgSkill
 // 7: DrvSkill
@@ -729,7 +729,7 @@ bool LiftDownPickUpClawLiftUpLiftDown_PART1_1(int target, bool manualFeed)
 
 	ret = moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown);
 	if (!ret){
-			return false;
+		return false;
 	}
 
 	// ret = moveClawLiftDownAndContinue(MID_CLAWLIFT, powerClawLiftDown);
@@ -866,7 +866,12 @@ bool LiftDownPickUpClawLiftUpLiftDown_PART2_1(int target, bool manualFeed)
 	// wait1Msec(450 - 250);
 
 	// CONE HOLD
-	closeClaw(powerClawHold);
+	if (manualFeed) {
+		closeClaw(powerClawHold + 10);
+	}
+	else {
+		closeClaw(powerClawHold);
+	}
 
 
 	// if (CONE_COUNT < 10){
@@ -1408,7 +1413,7 @@ void moveLiftUpForStationaryGoal(int liftValue)
 
 		if (!adjustHeight){
 			tcur = getLiftPosition();
-			ret = moveLiftDownAndStop(tcur - 100, powerliftDown);
+			ret = moveLiftDownAndStop(tcur - 150, powerliftDown);
 
 			if (!ret){
 				return;
@@ -1897,8 +1902,8 @@ int getLiftTargetPosition(bool manualFeed){
 			count = CONE_COUNT + 3;
 		}
 		else
-		if (CONE_COUNT >= 5){
-			count = CONE_COUNT + 1;
+			if (CONE_COUNT >= 5){
+			count = CONE_COUNT + 2;
 		}
 
 		// if (CONE_COUNT >= 12){
@@ -2344,9 +2349,9 @@ task moveClawLiftUpAndStopTask() {
 	// 	liftTarget = LIFT_TARGET;
 	// }
 	// else
-	if (CONE_COUNT >= 8){
+	if (CONE_COUNT >= 9){
 		// power = FULLPOWER / 2;
-		liftTarget = (LIFT_TARGET * 4) / 5;
+		liftTarget = (LIFT_TARGET * 5) / 5;
 	}
 
 	// writeDebugStreamLine("501");
@@ -2534,7 +2539,7 @@ void moveMobileLiftUpAuton(){
 }
 
 void moveMobileLiftDownToPickUp() {
-	if (0 < CONE_COUNT && CONE_COUNT <= 4){
+	if (0 < CONE_COUNT && CONE_COUNT <= 5){
 		openClaw(FULLPOWER);
 	}
 
@@ -2607,7 +2612,7 @@ void moveMobileLiftDownAndStop() {
 	stopClawLift();
 
 	//int liftPosition = getLiftPosition();
-	if (CONE_COUNT >= 4){
+	if (CONE_COUNT >= 4) {
 		// if (liftPosition > LIFT_PICK_MOBILE){
 		wait1Msec(200);
 		openClaw(FULLPOWER);
@@ -3156,7 +3161,7 @@ void programmingSkill() {
 	moveMobileLiftUpAndStop();  // Pick up THIRD mobile goal
 	wait1Msec(GLOBAL_WAITER_LONG);
 	MoveLineStop(Back, -(FULLPOWER-20));
-	wait1Msec(GLOBAL_WAITER_LONG);
+	wait1Msec(GLOBAL_WAITER_LONG + 300);
 	TurnLine(Back, -(powerToMove));
 	wait1Msec(GLOBAL_WAITER_LONG);
 	TurnLine(Right, -(powerToMove + 10));
@@ -3735,7 +3740,7 @@ void autonCone5(bool leftSide) {
 			MoveIEM(50, FULLPOWER);
 		}
 		else {
-			MoveIEM(50 + 30, FULLPOWER);
+			MoveIEM(100, FULLPOWER);
 		}
 		moveLiftUpAndStop(MIN_LIFT + 200, FULLPOWER);
 		writeDebugStreamLine("1003 - Starts Pickup Cone");
@@ -3744,7 +3749,7 @@ void autonCone5(bool leftSide) {
 		closeClaw(FULLPOWER);
 		wait1Msec(GLOBAL_WAITER);
 		moveLiftDownAndHold_Touch(FULLPOWER);
-  	wait1Msec(300);
+		wait1Msec(300);
 		moveLiftUpAndStop(MIN_LIFT + 50, FULLPOWER);
 		moveClawLiftUpAndStop(MAX_CLAWLIFT, FULLPOWER);
 
@@ -3891,12 +3896,12 @@ bool autoCommon(int coneCount) {
 	writeDebugStreamLine("1007");
 
 	// MoveIEM(490 - 50, -(powerToMove + 10));
-	MoveIEM(490 - 50, -(powerToMove + 10));
+	MoveIEM(490 - 20, -(powerToMove + 10));
 
 	writeDebugStreamLine("1008");
 
 	wait1Msec(GLOBAL_WAITER + 200);
-	ret = TurnLine(Left, -(powerToMove - 10));
+	ret = TurnLine(Left, -(powerToMove));
 	// ret = TurnLine(Left, -(powerToMove-10 - 5));
 	if (!ret){
 		return false;
