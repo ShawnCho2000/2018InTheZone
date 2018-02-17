@@ -97,7 +97,7 @@ typedef enum {
 
 // LineTypeStruct LineType = Back;
 
-int autonomousMode = 6;
+int autonomousMode = 1;
 const int drivingSkillMode = 7;
 // 6: ProgSkill
 // 7: DrvSkill
