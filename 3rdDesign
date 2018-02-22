@@ -18,8 +18,8 @@
 #pragma config(Motor,  port1,           clawMotor,     tmotorVex393HighSpeed_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           wheelRight,    tmotorVex393HighSpeed_MC29, openLoop, reversed, encoderPort, I2C_1)
 #pragma config(Motor,  port3,           wheelLeft,     tmotorVex393HighSpeed_MC29, openLoop, reversed)
-#pragma config(Motor,  port4,           clawLiftL,     tmotorVex393HighSpeed_MC29, openLoop, reversed)
-#pragma config(Motor,  port5,           clawLiftR,     tmotorVex393HighSpeed_MC29, openLoop, reversed)
+#pragma config(Motor,  port4,           clawLiftL,     tmotorVex393HighSpeed_MC29, openLoop)
+#pragma config(Motor,  port5,           clawLiftR,     tmotorVex393HighSpeed_MC29, openLoop)
 #pragma config(Motor,  port6,           wheelLeftMid,  tmotorVex393HighSpeed_MC29, openLoop, reversed)
 #pragma config(Motor,  port7,           armLiftLeftB,  tmotorVex393HighSpeed_MC29, openLoop, reversed)
 #pragma config(Motor,  port8,           armLiftRightB, tmotorVex393HighSpeed_MC29, openLoop)
@@ -55,10 +55,10 @@
 //Main competition background code...do not modify!
 #include "Vex_Competition_Includes.c"
 
-const int MAX_CLAWLIFT = 3100;
-const int MIN_CLAWLIFT = 1000; //2100 + 300;
+const int MAX_CLAWLIFT = 2900;
+const int MIN_CLAWLIFT = 900; //2100 + 300;
 const int MID_CLAWLIFT = (MAX_CLAWLIFT + MIN_CLAWLIFT) / 2;
-const int ERROR_CLAWLIFT = 600;
+const int ERROR_CLAWLIFT = 300;
 const int MAX_MOBILELIFT = 3900;
 const int STOP_MOBILELIFT = 2800;
 const int HIGHGOAL_MOBILELIFT = 2800;
@@ -109,9 +109,9 @@ const int HALFFULLPOWER = 64;
 //const int powerliftUp = 120;
 const int powerliftDown = 100;//50;
 //const int powerliftDownPickUp = powerliftDown * 2;
-const int powerClawLiftUp = 100 - 10;
-const int powerClawLiftDown = 90 - 10;
-const int powerClawHold = 40;
+const int powerClawLiftUp = 90;
+const int powerClawLiftDown = 100;
+const int powerClawHold = 60;
 
 string LIFT_STATUS = "";
 
@@ -788,7 +788,7 @@ bool LiftDownPickUpClawLiftUpLiftDown_PART1(int target, bool manualFeed)
 
 
 
-	ret = moveClawLiftDownAndStop(MIN_CLAWLIFT, HALFFULLPOWER /*powerClawLiftDown*/);
+	ret = moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown /*powerClawLiftDown*/);
 	if (!ret){
 		return false;
 	}
@@ -830,11 +830,14 @@ bool LiftDownPickUpClawLiftUpLiftDown_PART2(int target, bool manualFeed)
 	if (manualFeed){
 		int tTarget = FEED_LIFT;// - 100 + 100;
 		int tPower = 80 + 20;
+
+		tPower = FULLPOWER;
+
 		ret = moveLiftDownAndStop(tTarget, tPower);
 		if (!ret){
 			return false;
 		}
-		wait1Msec(100);
+		wait1Msec(200);
 	}
 	else {
 		int tPower = FULLPOWER;
@@ -844,6 +847,8 @@ bool LiftDownPickUpClawLiftUpLiftDown_PART2(int target, bool manualFeed)
 		else if (CONE_COUNT >= 8){
 			tPower = 95;
 		}
+
+		tPower = FULLPOWER;
 		ret = moveLiftDownAndHold_Touch(tPower);
 		if (!ret){
 			return false;
@@ -900,7 +905,7 @@ bool LiftDownPickUpClawLiftUpLiftDown_PART2(int target, bool manualFeed)
 	// writeDebugStreamLine("103");
 
 	// CLAW LIFT UP
-	ret = moveClawLiftUpAndStop(MAX_CLAWLIFT, powerClawLiftUp - 10);
+	ret = moveClawLiftUpAndStop(MID_CLAWLIFT, powerClawLiftUp);
 	if (!ret){
 		return false;
 	}
@@ -936,16 +941,18 @@ bool LiftDownPickUpClawLiftUpLiftDown_PART2(int target, bool manualFeed)
 	}
 	else
 	{
+		// moveClawLiftUp(10);
 		// writeDebugStreamLine("106");
-		if (CONE_COUNT >= 11)
+		if (CONE_COUNT >= 10)
 		{
-			wait1Msec(100);
+			wait1Msec(200);
 		}
 		//ret = PushORUpCone(true);
 		moveLiftDown(powerliftDown);
 		int waiter = 270;
 		wait1Msec(waiter);
 		stopLift();
+		stopClawLift();
 
 		if (!ret){
 			return false;
@@ -1516,7 +1523,7 @@ task clawLift()
 
 		if (vexRT[Btn8R] == 1) {
 			if (vexRT[Btn5U] == 1){
-				moveClawLiftUpAndStop(MAX_CLAWLIFT, powerClawLiftUp);
+				moveClawLiftUpAndStop(MID_CLAWLIFT, powerClawLiftUp);
 			}
 			else if (vexRT[Btn5D] == 1){
 				moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown);
@@ -1526,7 +1533,7 @@ task clawLift()
 
 			if (vexRT[Btn5U] == 1){
 				LIFT_STATUS = "manual";
-				moveClawLiftUp(FULLPOWER);
+				moveClawLiftUp(powerClawLiftUp);
 			}
 			else if (vexRT[Btn5D] == 1){
 				LIFT_STATUS = "manual";
@@ -1771,12 +1778,12 @@ int getLiftTargetPosition(bool manualFeed){
 		return count * offset;
 	}
 	else {
-		int offset = 50; //120
-		int count = CONE_COUNT - 3;
+		int offset = 100; //120
+		int count = CONE_COUNT - 2;
 
 
 		if (CONE_COUNT >= 11){
-			count = CONE_COUNT + 2;
+			count = CONE_COUNT + 3;
 		}
 
 		return count * offset;
