@@ -58,7 +58,7 @@
 const int MAX_CLAWLIFT = 2900;
 const int MIN_CLAWLIFT = 900; //2100 + 300;
 const int MID_CLAWLIFT = (MAX_CLAWLIFT + MIN_CLAWLIFT) / 2;
-const int ERROR_CLAWLIFT = 300;
+const int ERROR_CLAWLIFT = 500;
 const int MAX_MOBILELIFT = 3900;
 const int STOP_MOBILELIFT = 2800;
 const int HIGHGOAL_MOBILELIFT = 2800;
@@ -117,7 +117,7 @@ const int powerClawHold = 60;
 
 string LIFT_STATUS = "";
 
-int CONE_COUNT = 10;
+int CONE_COUNT = 0;
 // int CONE_COUNT_STATIONARY = 0;
 // int LIFT_TARGET = MIN_LIFT;
 // int STATIONARY_LIFT_TARGET = 0;
@@ -647,7 +647,7 @@ void PickUpAndMoveLiftUp()
 
 bool LiftDownPickUpClawLiftUpLiftDown_PART1(int target, bool manualFeed)
 {
-	writeDebugStreamLine("PART1> Target: %d, Cone: %d", target, CONE_COUNT);
+	// writeDebugStreamLine("PART1> Target: %d, Cone: %d", target, CONE_COUNT);
 
 	LIFT_STATUS = "LiftDownPickUpClawLiftUpLiftDown_PART1";
 	// READY PICKUP
@@ -667,14 +667,14 @@ bool LiftDownPickUpClawLiftUpLiftDown_PART1(int target, bool manualFeed)
 
 
 
-	ret = moveClawLiftDownAndStop(MID_CLAWLIFT, powerClawLiftDown /*powerClawLiftDown*/);
+	ret = moveClawLiftDownAndStop(MID_CLAWLIFT - 200, powerClawLiftDown /*powerClawLiftDown*/);
 	if (!ret){
 		return false;
 	}
 	LIFT_STATUS = "";
 
 
-	writeDebugStreamLine("PART1> clawLiftPosition: %d", getClawLiftPosition());
+	// writeDebugStreamLine("PART1> clawLiftPosition: %d", getClawLiftPosition());
 
 
 	writeDebugStreamLine("202");
@@ -686,7 +686,7 @@ bool LiftDownPickUpClawLiftUpLiftDown_PART1(int target, bool manualFeed)
 
 bool LiftDownPickUpClawLiftUpLiftDown_PART2(int target, bool manualFeed)
 {
-	writeDebugStreamLine("PART2> Target: %d, Cone: %d, clawLiftPosition: %d", target, CONE_COUNT, getClawLiftPosition());
+	// writeDebugStreamLine("PART2> Target: %d, Cone: %d, clawLiftPosition: %d", target, CONE_COUNT, getClawLiftPosition());
 	LIFT_STATUS = "LiftDownPickUpClawLiftUpLiftDown_PART2";
 
 	// int target = getCurrentLiftTargetPosition(manualFeed, false);
@@ -704,7 +704,7 @@ bool LiftDownPickUpClawLiftUpLiftDown_PART2(int target, bool manualFeed)
 		}
 	}
 
-	writeDebugStreamLine("PART2> clawLiftPosition: %d", getClawLiftPosition());
+	// writeDebugStreamLine("PART2> clawLiftPosition: %d", getClawLiftPosition());
 
 	if (manualFeed){
 		int tTarget = FEED_LIFT;// - 100 + 100;
@@ -768,12 +768,12 @@ bool LiftDownPickUpClawLiftUpLiftDown_PART2(int target, bool manualFeed)
 		// writeDebugStreamLine("102");
 
 		if (CONE_COUNT > 0){
-			if (CONE_COUNT == 2) {
-				target += 100;
-			}
-			else if (CONE_COUNT == 1) {
-				target += 50;
-			}
+			// if (CONE_COUNT == 2) {
+			// 	target += 100;
+			// }
+			// else if (CONE_COUNT == 1) {
+			// 	target += 50;
+			// }
 			ret = moveLiftUpAndHold_Smart(target, FULLPOWER);
 			if (!ret){
 				return false;
@@ -787,7 +787,7 @@ bool LiftDownPickUpClawLiftUpLiftDown_PART2(int target, bool manualFeed)
 	// writeDebugStreamLine("103");
 
 	// CLAW LIFT UP
-	ret = moveClawLiftUpAndStop(MID_CLAWLIFT, powerClawLiftUp);
+	ret = moveClawLiftUpAndStop(MID_CLAWLIFT + 100, powerClawLiftUp);
 	if (!ret){
 		return false;
 	}
@@ -919,8 +919,10 @@ void scoreStationaryGoal(){
 	//const int powerLiftHalft = FULLPOWER / 2;
 	const int _powerClawLiftUp = powerClawLiftUp * 2 / 3;
 	const int _powerClawLiftDown = powerClawLiftDown * 2 / 3;
+	int i = 0;
 
 	while(true){
+		wait1Msec(50);
 		if (vexRT[Btn8D] == 1){
 			int clawLiftPosition = getClawLiftPosition();
 			if (clawLiftPosition < MID_CLAWLIFT){
@@ -937,12 +939,26 @@ void scoreStationaryGoal(){
 			// wait1Msec(100);
 		}
 		else if (vexRT[Btn7D] == 1){
+			writeDebugStreamLine("7D> count: %d", i++);
+
 			closeClaw(powerClawHold);
 			moveClawLiftDownAndStop(MID_CLAWLIFT, _powerClawLiftDown /*powerClawLiftDown*/);
 			wait1Msec(100);
+			moveLiftDown(powerLift);
+
+			// while(true)
+			// {
+			// 	if (vexRT[Btn7D] == 1 || vexRT[Btn8L] == 1){
+			// 		moveLiftDown(powerLift);
+			// 		break;
+			// 	}
+			// 	else if (vexRT[Btn7U] == 1){
+			// 		ReleaseCone();
+			// 		break;
+			// 	}
+			// }
 
 			// if (getLiftPosition() < 3600){
-			moveLiftDown(powerLift);
 			// }
 			// else
 			// {
@@ -1102,12 +1118,12 @@ task clawLift()
 		if (vexRT[Btn8R] == 1) {
 
 			if (vexRT[Btn5U] == 1){
-				moveClawLiftUpAndStop(MID_CLAWLIFT, powerClawLiftUp);
+				moveClawLiftUpAndStop(MAX_CLAWLIFT, powerClawLiftUp);
 				// LIFT_STATUS = "manual";
 				// moveClawLiftUp(powerClawLiftUp);
 			}
 			else if (vexRT[Btn5D] == 1){
-				moveClawLiftDownAndStop(MID_CLAWLIFT, powerClawLiftDown);
+				moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown);
 				// LIFT_STATUS = "manual";
 				// moveClawLiftDown(powerClawLiftDown);
 			}
@@ -1377,11 +1393,12 @@ int getLiftTargetPosition(){
 		int offset = 100; //120
 		int count = CONE_COUNT - 2;
 
-
 		if (CONE_COUNT >= 11){
 			count = CONE_COUNT + 3;
 		}
-
+		else if (CONE_COUNT == 1){
+			return CONE_COUNT + CONE_COUNT / 2;
+		}
 		return count * offset;
 }
 
@@ -1735,11 +1752,20 @@ bool moveClawLiftDownAndStop(int distance, int power) {
 	clearTimer(T4);
 	int clawLiftPosition = getClawLiftPosition();
 
+	writeDebugStreamLine("In <<<<<<<<<<<<<<<<<<<<<<<<");
 	while (clawLiftPosition > distance || clawLiftPosition < ERROR_CLAWLIFT){
 		wait1Msec(50);
 
 		clawLiftPosition = getClawLiftPosition();
 		moveClawLiftDown(power);
+
+		writeDebugStreamLine("clawLiftPosition: %d", clawLiftPosition);
+
+		// if (abs(temp - clawLiftPosition) > 320){
+		// 	writeDebugStreamLine("invalid");
+		// 	mobileLiftPosition = MAX_MOBILELIFT;
+		// }
+
 		if (vexRT[Btn8L] == 1)
 		{
 			return false;
@@ -1751,6 +1777,8 @@ bool moveClawLiftDownAndStop(int distance, int power) {
 
 	}
 	stopClawLift();
+	writeDebugStreamLine("Out");
+
 
 	return true;
 }
@@ -1871,11 +1899,8 @@ void moveMobileLiftDownToPickUp() {
 	else if (liftPosition > LIFT_PICK_MOBILE)
 	{
 		moveLiftDown(FULLPOWER / 2);
-		// closeClaw(FULLPOWER / 2);
-		// int waiter = 80;
 		wait1Msec(100);
 		stopLift();
-		// stopClaw();
 	}
 
 	moveMobileLiftDownAndStop(higher);
@@ -1919,6 +1944,7 @@ void SetInitialPositionAuton() {
 void moveMobileLiftDownAndStop(bool higher) {
 	int mobileLiftDown = getMobileLiftDown();
 	int mobileLiftPosition = getMobileLiftPosition();
+	//int previousMLPosition = mobileLiftPosition;
 
 	// writeDebugStreamLine("1 moveMobileLiftDownAndStop> mobileLiftPosition: %d, STOP_MOBILELIFT: %d", mobileLiftPosition, STOP_MOBILELIFT);
 
@@ -1928,7 +1954,9 @@ void moveMobileLiftDownAndStop(bool higher) {
 	stopClaw();
 
 	while (mobileLiftDown == 0){
+		// writeDebugStreamLine("in");
 		wait1Msec(50);
+
 		moveMobileLiftDown(FULLPOWER);
 		moveClawLiftDown(30);
 
@@ -1937,15 +1965,20 @@ void moveMobileLiftDownAndStop(bool higher) {
 			break;
 		}
 
+		int temp = mobileLiftPosition;
 		mobileLiftDown = getMobileLiftDown();
 		mobileLiftPosition = getMobileLiftPosition();
+		if (abs(temp - mobileLiftPosition) > 300){
+			// writeDebugStreamLine("invalid");
+			mobileLiftPosition = MAX_MOBILELIFT;
+		}
 
 		// writeDebugStreamLine("2 moveMobileLiftDownAndStop> mobileLiftPosition: %d, STOP_MOBILELIFT: %d", mobileLiftPosition, STOP_MOBILELIFT);
 
 
-		// writeDebugStreamLine("mobileLiftDown: %d", mobileLiftDown);
 		if (mobileLiftDown == 1 || mobileLiftDown != 0)
 		{
+			// writeDebugStreamLine("mobileLiftDown: %d", mobileLiftDown);
 			break;
 		}
 
@@ -1953,10 +1986,9 @@ void moveMobileLiftDownAndStop(bool higher) {
 		if (mobileLiftPosition < STOP_MOBILELIFT){
 			// writeDebugStreamLine("3 moveMobileLiftDownAndStop> mobileLiftPosition: %d, STOP_MOBILELIFT: %d", mobileLiftPosition, STOP_MOBILELIFT);
 
-			moveClawLiftDown(10 + 2);
+			moveClawLiftDown(20);
 
 			if (higher){
-
 				stopMobileLift();
 				// moveClawLiftDown(40);
 				// int tcur = getLiftPosition();
@@ -1966,6 +1998,7 @@ void moveMobileLiftDownAndStop(bool higher) {
 		}
 	}
 
+	// writeDebugStreamLine("out");
 	stopMobileLift();
 	stopClawLift();
 
