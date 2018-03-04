@@ -55,11 +55,11 @@
 //Main competition background code...do not modify!
 #include "Vex_Competition_Includes.c"
 
-const int MAX_CLAWLIFT = 2900;
+const int MAX_CLAWLIFT = 2300;
 const int MIN_CLAWLIFT = 900; //2100 + 300;
 const int MID_CLAWLIFT = (MAX_CLAWLIFT + MIN_CLAWLIFT) / 2;
 //const int CLAWLIFT_OFFSET = 300;
-const int ERROR_CLAWLIFT = 300;
+const int ERROR_CLAWLIFT = 200;
 const int MAX_MOBILELIFT = 3900;
 const int STOP_MOBILELIFT = 2800;
 const int HIGHGOAL_MOBILELIFT = 2800;
@@ -99,7 +99,7 @@ typedef enum {
 
 // LineTypeStruct LineType = Back;
 
-int autonomousMode = 6;
+int autonomousMode = 3;
 const int drivingSkillMode = 7;
 // 6: ProgSkill
 // 7: DrvSkill
@@ -549,9 +549,11 @@ task lift()
 
 			}
 			else if (vexRT[Btn7R] == 1){
-				// writeDebugStreamLine("7R");
+				writeDebugStreamLine("7R");
 
 				moveMobileLiftDownToPickUp();
+				writeDebugStreamLine("out 4th");
+
 			}
 			else if (vexRT[Btn8U] == 1){
 				PickUpAndMoveLiftUp();
@@ -582,7 +584,7 @@ task lift()
 				}
 				else
 				{
-					moveClawLiftDownAndStop(MIN_CLAWLIFT /*MID_CLAWLIFT - CLAWLIFT_OFFSET*/, powerClawLiftDown);
+					moveClawLiftDownAndStop(MIN_CLAWLIFT - 100 /*MID_CLAWLIFT - CLAWLIFT_OFFSET*/, powerClawLiftDown);
 					wait1Msec(100);
 				}
 
@@ -1060,6 +1062,8 @@ void moveLiftUpForStationaryGoal(int liftValue)
 		}
 	}
 
+	wait1Msec(200);
+
 	PushORUpCone(true);
 
 	openClaw(powerClawOpen);
@@ -1402,17 +1406,17 @@ int getLiftTargetPositionForStationaryGoal(){
 }
 
 int getLiftTargetPosition(){
-		int offset = 100; //120
-		int count = CONE_COUNT - 2;
+	int offset = 100; //120
+	int count = CONE_COUNT - 2;
 
-		if (CONE_COUNT >= 11){
-			count = CONE_COUNT + 3;
-		}
-		// else if (1 <= CONE_COUNT && CONE_COUNT < 3){
-		else if (1 == CONE_COUNT || 2 == CONE_COUNT){
-			return CONE_COUNT * (offset / 2);
-		}
-		return count * offset;
+	if (CONE_COUNT >= 11){
+		count = CONE_COUNT + 3;
+	}
+	// else if (1 <= CONE_COUNT && CONE_COUNT < 3){
+	else if (1 == CONE_COUNT || 2 == CONE_COUNT){
+		return CONE_COUNT * (offset / 2);
+	}
+	return count * offset;
 }
 
 
@@ -1885,6 +1889,7 @@ void moveMobileLiftDownToPickUp() {
 	bool higher = true;
 
 	if (CONE_COUNT == 0){
+		writeDebugStreamLine("in");
 		higher = false;
 		bool ret = moveLiftUpAndStop(LIFT_PICK_MOBILE, FULLPOWER);
 		if (!ret){
@@ -1917,6 +1922,7 @@ void moveMobileLiftDownToPickUp() {
 	}
 
 	moveMobileLiftDownAndStop(higher);
+	writeDebugStreamLine("out 3");
 }
 
 void moveMobileLiftDownToPickUpAuton() {
@@ -1971,7 +1977,11 @@ void moveMobileLiftDownAndStop(bool higher) {
 		wait1Msec(50);
 
 		moveMobileLiftDown(FULLPOWER);
-		moveClawLiftDown(30);
+		int liftPos = getLiftPosition();
+		if (CONE_COUNT > 0) {
+			writeDebugStreamLine("clawLift");
+			moveClawLiftDown(30 + 20);
+		}
 
 		if (vexRT[Btn8L] == 1)
 		{
@@ -1999,7 +2009,7 @@ void moveMobileLiftDownAndStop(bool higher) {
 		if (mobileLiftPosition < STOP_MOBILELIFT){
 			// writeDebugStreamLine("3 moveMobileLiftDownAndStop> mobileLiftPosition: %d, STOP_MOBILELIFT: %d", mobileLiftPosition, STOP_MOBILELIFT);
 
-			moveClawLiftDown(20);
+			//moveClawLiftDown(30);
 
 			if (higher){
 				stopMobileLift();
@@ -2011,7 +2021,7 @@ void moveMobileLiftDownAndStop(bool higher) {
 		}
 	}
 
-	// writeDebugStreamLine("out");
+	writeDebugStreamLine("out 1");
 	stopMobileLift();
 	stopClawLift();
 
@@ -2027,7 +2037,7 @@ void moveMobileLiftDownAndStop(bool higher) {
 		// int tcur = getLiftPosition();
 		// moveLiftUpAndStop(tcur + 100, 100);
 	}
-
+	writeDebugStreamLine("out 2");
 	stopClaw();
 }
 
@@ -2267,8 +2277,13 @@ void AutonomousSelector(int btnLCD)
 	{
 		button = nLCDButtons;
 
+		autonomousMode = autonomousModeValue;
+
+		//wait1Msec(800);
+
 		if (button == 2 || vexRT[Btn8L] == 1)
 		{
+
 			displayBatteryLevelOnLCD(autonomousModeValue);
 
 			bLCDBacklight=false;
@@ -2291,6 +2306,18 @@ void AutonomousSelector(int btnLCD)
 			}
 
 			DisplayAutonomousMode(autonomousModeValue);
+		}
+		else{
+
+			string text;
+			sprintf(text, "Selected: %d", nMotorEncoder[wheelRight]); //Build the value to be displayed
+
+			//Display the Primary Robot battery voltage
+			// displayLCDString(0, 0, "Autonomous: ");
+			clearLCDLine(1); 
+			displayLCDString(0, 0, text);
+
+
 		}
 	}
 
@@ -2505,7 +2532,7 @@ void programmingSkill() {
 	wait1Msec(GLOBAL_WAITER);
 	MoveIEM(500, 110);
 	wait1Msec(GLOBAL_WAITER);
-	MoveHelper(50);
+	MoveHelper(80);
 	wait1Msec(600);
 	MoveHelper(0);
 	moveMobileLiftDownToPickUp(); // Deploy SECOND MG
@@ -2938,7 +2965,7 @@ void autonCone5(bool leftSide) {
 	// wait1Msec(GLOBAL_WAITER);
 	moveMobileLiftDownToPickUp();
 	MoveHelper(-80);
-	wait1Msec(560);
+	wait1Msec(600);
 	if (leftSide == false) {
 		// RIGHT
 		wait1Msec(100);
@@ -2964,13 +2991,17 @@ bool autoCommon(int coneCount) {
 
 	// writeDebugStreamLine("1001");
 	wait1Msec(300);
-	ret = MoveLineStop(Back, powerToMove - 15 - 5);
+	ret = MoveLineStop(Back, powerToMove - 15);
 	if (!ret){
 		return false;
 	}
 
 	// writeDebugStreamLine("1002");
 	wait1Msec(GLOBAL_WAITER);
+
+	//moveLiftDown(powerliftDown);
+	//wait1Msec(200);
+
 
 	moveLiftDownAndStop(MIN_LIFT, powerliftDown);
 	// writeDebugStreamLine("1003");
@@ -2985,6 +3016,7 @@ bool autoCommon(int coneCount) {
 	// openClaw(powerClawClose); //for one cone only!
 
 	// coneCount = 2;
+	//moveLiftDown(0);
 
 	if (coneCount > 1){
 		moveMobileLiftUpToStackAuton(FULLPOWER);
@@ -3015,7 +3047,7 @@ bool autoCommon(int coneCount) {
 		wait1Msec(200);
 
 		moveLiftUp(FULLPOWER);
-		wait1Msec(200);
+		wait1Msec(220);
 		stopLift();
 		// wait1Msec(100);
 
@@ -3104,7 +3136,7 @@ void autonCone20(int coneCount) {
 	// writeDebugStreamLine("1007");
 
 	// MoveIEM(490 - 50, -(powerToMove + 10));
-	MoveIEM(490, -(powerToMove + 10)); //this is just right at home, might need to increase at competition
+	MoveIEM(490 - 40, -(powerToMove + 10)); //this is just right at home, might need to increase at competition
 
 	// writeDebugStreamLine("1008");
 
@@ -3161,16 +3193,16 @@ void autonCone20(int coneCount) {
 	// wait1Msec(GLOBAL_WAITER);
 	// writeDebugStreamLine("1009");
 	moveMobileLiftDown(FULLPOWER);
-	wait1Msec(300);
+	wait1Msec(400);
 	stopMobileLift();
 
 	// moveMobileLiftDownAndStopAuton(HIGHGOAL_MOBILELIFT + 200);
 
 	// writeDebugStreamLine("1010");
-	MoveHelper(75);
+	MoveHelper(100);
 	wait1Msec(200);
-	MoveHelper(50);
-	wait1Msec(100);
+	MoveHelper(90);
+	wait1Msec(200);
 	MoveHelper(0);
 
 	// moveMobileLiftUpAuton();
