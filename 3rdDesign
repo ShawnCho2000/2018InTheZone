@@ -55,15 +55,15 @@
 //Main competition background code...do not modify!
 #include "Vex_Competition_Includes.c"
 
-const int MAX_CLAWLIFT = 2900;
+const int MAX_CLAWLIFT = 3000;
 const int MIN_CLAWLIFT = 900; //2100 + 300;
 const int MID_CLAWLIFT = (MAX_CLAWLIFT + MIN_CLAWLIFT) / 2;
 //const int CLAWLIFT_OFFSET = 300;
 const int ERROR_CLAWLIFT = 300;
-const int MAX_MOBILELIFT = 3400;
+const int MAX_MOBILELIFT = 2900;
 const int STOP_MOBILELIFT = 2000;
-const int HIGHGOAL_MOBILELIFT = 2800;
-const int DRIVING_MOBILELIFT = 2700;
+// const int HIGHGOAL_MOBILELIFT = 2800;
+const int DRIVING_MOBILELIFT = 2700 - 600;
 // const int HIGHGOAL_MOBILELIFT = 2800;
 
 
@@ -82,7 +82,7 @@ const int STATIONARY_LIFT = 2500;
 const int GLOBAL_WAITER = 100;
 const int GLOBAL_WAITER_LONG = 100;
 
-const int COLOR_DIFF = 30; //comp value: 50
+const int COLOR_DIFF = 30 - 7; //comp value: 50
 int COLOR_BASE_BACK = 3000;
 int COLOR_BASE_RIGHT = 3000;
 int COLOR_BASE_LEFT = 3000;
@@ -99,7 +99,7 @@ typedef enum {
 
 // LineTypeStruct LineType = Back;
 
-int autonomousMode = 6;
+int autonomousMode = 1;
 const int drivingSkillMode = 7;
 // 6: ProgSkill
 // 7: DrvSkill
@@ -164,6 +164,8 @@ void moveClawLiftUp(int power);
 void moveClawLiftDown(int power);
 bool moveClawLiftUpAndStop(int distance, int power);
 bool moveClawLiftDownAndStop(int distance, int power);
+bool moveClawLiftDownAndHold(int distance, int power);
+bool moveClawLiftDownAndHelper(int distance, int power);
 
 // CLAW
 void moveClaw(int power);
@@ -236,12 +238,12 @@ int getLineBack();
 // void moveLiftUpAndRelease(int distanceLift, int powerLift, int distanceClawLift, int powerClawLift);
 
 // HELPERS
-bool autoCommon(int coneCount);
+bool autoCommon(int coneCount, bool leftSide);
 void SetInitialPositionAuton();
 
-void autonCone20(int coneCount);
+void autonCone20(int coneCount, bool leftSide);
 void autonCone5(bool leftSide);
-void autonStationary();
+void autonStationary(bool leftSide);
 void programmingSkill();
 
 void HitBarAndAlign();
@@ -355,17 +357,17 @@ task autonomous()
 
 	long startTime = nPgmTime;
 
-	startAuton(FULLPOWER);
+	//startAuton(FULLPOWER);
 
 	if (autonomousMode == 1)
 	{
 		// TurnGyroLeft(180);
 
-		autonCone20(2);
+		autonCone20(2, true);
 	}
 	else if (autonomousMode == 2)
 	{
-		autonCone20(1);
+		autonCone20(2, false);
 	}
 	else if (autonomousMode == 3)
 	{
@@ -377,9 +379,13 @@ task autonomous()
 	}
 	else if (autonomousMode == 5)
 	{
-		autonStationary();
+		autonStationary(true);
 	}
-	else if (autonomousMode == 6)
+	else if (autonomousMode == 6) 
+	{
+		autonStationary(false);
+	}
+	else if (autonomousMode == 7)
 	{
 		programmingSkill();
 	}
@@ -493,6 +499,9 @@ task lift()
 			// if (vexRT[Btn5U] == 0 && vexRT[Btn5D] == 0){
 			// 	stopClawLift();
 			// }
+			if (vexRT[Btn6U] == 0) {
+				stopMobileLift();
+			}
 
 			if (LIFT_STATUS == "manual" && vexRT[Btn7U] == 0 && vexRT[Btn7D] == 0){
 				stopLift();
@@ -561,7 +570,7 @@ task lift()
 				// writeDebugStreamLine("8D");
 
 				if (false){
-					moveClawLiftDown(powerClawLiftDown);
+					moveClawLiftDown(powerClawLiftDown - 30);
 
 					int clawLiftPosition = getClawLiftPosition();
 					while (true){
@@ -583,7 +592,11 @@ task lift()
 				}
 				else
 				{
-					moveClawLiftDownAndStop(MIN_CLAWLIFT /*MID_CLAWLIFT - CLAWLIFT_OFFSET*/, powerClawLiftDown);
+					int pClawLiftDown = powerClawLiftDown * 4 / 5;
+					if (getLiftPosition() > 1400) {
+						pClawLiftDown = powerClawLiftDown * 3 / 5;
+					}
+					moveClawLiftDownAndHold(MIN_CLAWLIFT /*MID_CLAWLIFT /*- CLAWLIFT_OFFSET*/, /*FULLPOWER - 20*/pClawLiftDown);
 					wait1Msec(100);
 				}
 
@@ -787,7 +800,7 @@ bool LiftDownPickUpClawLiftUpLiftDown_PART2(int target, bool manualFeed)
 	// writeDebugStreamLine("103");
 
 	// CLAW LIFT UP
-	ret = moveClawLiftUpAndStop(MAX_CLAWLIFT /*MID_CLAWLIFT + CLAWLIFT_OFFSET*/, powerClawLiftUp);
+	ret = moveClawLiftUpAndStop(MAX_CLAWLIFT /*MID_CLAWLIFT + CLAWLIFT_OFFSET*/, powerClawLiftUp / 2);
 	if (!ret){
 		return false;
 	}
@@ -865,7 +878,7 @@ void ReleaseCone(){
 	moveLiftUp(FULLPOWER / 2);
 	wait1Msec(200);
 	openClaw(powerClawOpen);
-	moveLiftUp(FULLPOWER);
+	moveLiftUp(FULLPOWER / 2);
 
 }
 
@@ -926,11 +939,14 @@ void scoreStationaryGoal(){
 	int i = 0;
 
 	while(true){
+		// moveMobileLiftUp(20);
 		wait1Msec(50);
 		if (vexRT[Btn8D] == 1){
+
+			stopLift();
 			int clawLiftPosition = getClawLiftPosition();
 			if (clawLiftPosition < MID_CLAWLIFT){
-				moveClawLiftUpAndStop(MAX_CLAWLIFT /*MID_CLAWLIFT + CLAWLIFT_OFFSET*/, powerClawLiftUp);
+				moveClawLiftUpAndStop(MID_CLAWLIFT /*MID_CLAWLIFT + CLAWLIFT_OFFSET*/, powerClawLiftUp * 2 / 3);
 				wait1Msec(100);
 			}
 			closeClaw(powerClawClose);
@@ -938,7 +954,7 @@ void scoreStationaryGoal(){
 		}
 		else if (vexRT[Btn8U] == 1){
 			closeClaw(powerClawHold);
-			moveLiftUp(powerLift);
+			moveLiftUp(FULLPOWER * 2 / 3);
 			// PushORUpCone(false);
 			// wait1Msec(100);
 		}
@@ -946,7 +962,7 @@ void scoreStationaryGoal(){
 			writeDebugStreamLine("7D> count: %d", i++);
 			holdLift();
 			closeClaw(powerClawHold);
-			moveClawLiftDownAndStop(MIN_CLAWLIFT /*MID_CLAWLIFT - CLAWLIFT_OFFSET*/, _powerClawLiftDown /*powerClawLiftDown*/);
+			moveClawLiftDownAndStop(MIN_CLAWLIFT /*MID_CLAWLIFT - CLAWLIFT_OFFSET*/, powerClawLiftDown * 4 / 5 /*powerClawLiftDown*/);
 			wait1Msec(100);
 			while(vexRT[Btn7D] == 1)
 			{
@@ -974,7 +990,6 @@ void scoreStationaryGoal(){
 			// }
 		}
 		else if (vexRT[Btn7U] == 1){
-			holdLift();
 			ReleaseCone();
 
 			if (CONE_COUNT > 1){
@@ -1132,7 +1147,7 @@ task clawLift()
 		if (vexRT[Btn8R] == 1) {
 
 			if (vexRT[Btn5U] == 1){
-				moveClawLiftUpAndStop(MID_CLAWLIFT, powerClawLiftUp);
+				moveClawLiftUpAndStop(MID_CLAWLIFT, /*50*/ powerClawLiftUp);
 				// LIFT_STATUS = "manual";
 				// moveClawLiftUp(powerClawLiftUp);
 			}
@@ -1152,7 +1167,11 @@ task clawLift()
 				// stopLift();
 				int clawLiftPosition = getClawLiftPosition();
 				if (clawLiftPosition < MID_CLAWLIFT){
-					moveClawLiftUpAndStop(MAX_CLAWLIFT /*MID_CLAWLIFT + CLAWLIFT_OFFSET*/, powerClawLiftUp);
+					int pClawLiftUp = powerClawLiftUp + 20;
+					if (getLiftPosition() > 1400) {
+						pClawLiftUp = powerClawLiftUp;
+					}
+					moveClawLiftUpAndStop(/*MAX_CLAWLIFT*/ MID_CLAWLIFT /* + CLAWLIFT_OFFSET*/, /*50*/ pClawLiftUp);
 				}
 				else{
 					writeDebugStreamLine("5U - 2");
@@ -1169,7 +1188,7 @@ task clawLift()
 				// stopLift();
 				int clawLiftPosition = getClawLiftPosition();
 				if (clawLiftPosition < MID_CLAWLIFT){
-					moveClawLiftUpAndStop(MAX_CLAWLIFT /*MID_CLAWLIFT + CLAWLIFT_OFFSET*/, powerClawLiftUp);
+					moveClawLiftUpAndStop(/*MAX_CLAWLIFT */ MID_CLAWLIFT /* + CLAWLIFT_OFFSET*/, 10 /*powerClawLiftUp*/);
 				}
 				else{
 					writeDebugStreamLine("5d");
@@ -1766,7 +1785,25 @@ bool moveClawLiftUpAndStop(int distance, int power) {
 	return true;
 }
 
+bool moveClawLiftDownAndHold(int distance, int power) {
+	bool ret = moveClawLiftDownAndHelper(distance, power);
+	moveClawLiftDown(10);
+
+	if (!ret)
+	{
+		stopClawLift();
+	}
+	return ret;
+}
+
+
 bool moveClawLiftDownAndStop(int distance, int power) {
+	bool ret = moveClawLiftDownAndHelper(distance, power);
+	stopClawLift();
+	return ret;
+}
+
+bool moveClawLiftDownAndHelper(int distance, int power) {
 
 	clearTimer(T4);
 	int clawLiftPosition = getClawLiftPosition();
@@ -1795,7 +1832,7 @@ bool moveClawLiftDownAndStop(int distance, int power) {
 		}
 
 	}
-	stopClawLift();
+	// stopClawLift();
 	// writeDebugStreamLine("Out");
 
 
@@ -1958,7 +1995,6 @@ void SetInitialPositionAuton() {
 	holdLift();
 
 	moveMobileLiftDown(FULLPOWER);
-	moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown / 2);
 	// wait1Msec(200);
 	moveMobileLiftDownAndStopAuton(0);
 }
@@ -1972,9 +2008,9 @@ void moveMobileLiftDownAndStop(bool higher) {
 	// writeDebugStreamLine("1 moveMobileLiftDownAndStop> mobileLiftPosition: %d, STOP_MOBILELIFT: %d", mobileLiftPosition, STOP_MOBILELIFT);
 
 
-	openClaw(FULLPOWER/2);
-	wait1Msec(100);
-	stopClaw();
+	// openClaw(FULLPOWER/2);
+	// wait1Msec(100);
+	// stopClaw();
 
 	while (mobileLiftDown == 0){
 		// writeDebugStreamLine("in");
@@ -1988,7 +2024,7 @@ void moveMobileLiftDownAndStop(bool higher) {
  // +			writeDebugStreamLine("clawLift");
  // +			moveClawLiftDown(30 + 20);
  // +		}
-  		  
+
 
 		if (vexRT[Btn8L] == 1)
 		{
@@ -2204,7 +2240,7 @@ bool TurnLine(LineType lineType, int power) {
 
 
 		// if (diff > 20){
-		// 	writeDebugStreamLine("TurnLine) diff > 20: %d", diff);
+			// writeDebugStreamLine("TurnLine) diff: %d", diff);
 		// 	// writeDebugStreamLine("diff!!!");
 		// 	// break;
 		// }
@@ -2226,13 +2262,13 @@ bool TurnLine(LineType lineType, int power) {
 void TurnGyroRight(float angle) {
 	const float valuePerangle = 8.7;
 	float distance = valuePerangle * angle;
-	TurnGyro(distance, 45);
+	TurnGyro(distance, -45);
 }
 
 void TurnGyroLeft(float angle) {
 	const float valuePerangle = 8.9;
 	float distance = valuePerangle * angle;
-	TurnGyro(distance, -45);
+	TurnGyro(distance, 45);
 }
 
 void TurnGyro(int distance, int power) {
@@ -2316,7 +2352,7 @@ void AutonomousSelector(int btnLCD)
  // +
  // +			//Display the Primary Robot battery voltage
  // +			// displayLCDString(0, 0, "Autonomous: ");
- // +			clearLCDLine(1); 
+ // +			clearLCDLine(1);
  // +			displayLCDString(0, 0, text);
  // +
  // +
@@ -2339,12 +2375,12 @@ void DisplayAutonomousMode(int autonomousModeValue)
 	{
 	case 1:
 		{
-			text = "autonCone20_2Cones";
+			text = "20_L";
 			break;
 		}
 	case 2:
 		{
-			text = "autonCone20_1Cone";
+			text = "20_R";
 			break;
 		}
 	case 3:
@@ -2359,20 +2395,25 @@ void DisplayAutonomousMode(int autonomousModeValue)
 		}
 	case 5:
 		{
-			text = "autonStationary";
+			text = "DEF_L";
 			break;
 		}
 	case 6:
 		{
-			text = "ProgrammingSkill";
+			text = "DEF_R";
 			break;
 		}
 	case 7:
 		{
-			text = "drivingSkill";
+			text = "ProgrammingSkill";
 			break;
 		}
 	case 8:
+		{
+			text = "drivingSkill";
+			break;
+		}
+	case 9:
 		{
 			text = "None";
 			break;
@@ -2929,7 +2970,7 @@ void HitBarAndAlign(){
 void autonCone5(bool leftSide) {
 	int powerToMove = 70;
 
-	bool ret = autoCommon(2);
+	bool ret = autoCommon(2, leftSide);
 	if (!ret){
 		return;
 	}
@@ -2978,7 +3019,7 @@ void autonCone5(bool leftSide) {
 
 }
 
-bool autoCommon(int coneCount) {
+bool autoCommon(int coneCount, bool leftSide) {
 
 	// coneCount = 1;
 	int powerToMove = 70;
@@ -3000,15 +3041,12 @@ bool autoCommon(int coneCount) {
 
 	// writeDebugStreamLine("1002");
 	wait1Msec(GLOBAL_WAITER);
-
-	moveLiftDownAndStop(MIN_LIFT, powerliftDown);
 	// writeDebugStreamLine("1003");
 	// int target = getLiftPosition() - 50;
 	// moveLiftDownAndStop(target, powerliftDown);
 	// moveLiftDown(FULLPOWER);
 	// wait1Msec(GLOBAL_WAITER);
 	// stopLift();
-	openClaw(powerClawClose); //for one cone only!
 	// writeDebugStreamLine("1004");
 	// wait1Msec(100);
 	// openClaw(powerClawClose); //for one cone only!
@@ -3017,8 +3055,9 @@ bool autoCommon(int coneCount) {
 
 	if (coneCount > 1){
 		moveMobileLiftUpToStackAuton(FULLPOWER);
-		stopClaw();
-
+		wait1Msec(GLOBAL_WAITER);
+		moveLiftDownAndStop(MIN_LIFT, powerliftDown);
+		openClaw(powerClawClose); //for one cone only!
 		// writeDebugStreamLine("1005");
 		// // moveLiftUpAndStop(LIFT_PICK_MOBILE, FULLPOWER);
 		// moveLiftUp(FULLPOWER);
@@ -3030,38 +3069,48 @@ bool autoCommon(int coneCount) {
 		// stopClaw();
 		// wait1Msec(100);
 		// writeDebugStreamLine("1008");
-		MoveIEM(50 + 10, FULLPOWER);
+		MoveIEM(50 -  10, FULLPOWER);
+		wait1Msec(GLOBAL_WAITER);
+		stopClaw();
+		moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown + 10);
 
 		// moveMobileLiftUpAndStop();
 		// writeDebugStreamLine("1009");
 
 		closeClaw(FULLPOWER);
 		wait1Msec(GLOBAL_WAITER);
-		ret = moveLiftDownAndHold_Touch(FULLPOWER);
-		if (!ret){
-			return false;
-		}
+		moveLiftDownAndHold(MIN_LIFT, FULLPOWER);
 		wait1Msec(200);
 
 		moveLiftUp(FULLPOWER);
 		wait1Msec(200);
 		stopLift();
-		// wait1Msec(100);
 
-		// moveLiftUp(FULLPOWER);
 		moveClawLiftUpAndStop(MID_CLAWLIFT, powerClawLiftUp);
-		// wait1Msec(100);
 
 		moveLiftDown(FULLPOWER);
 		wait1Msec(150);
 		stopLift();
 
 		openClaw(powerClawOpen);
-		// wait1Msec(100);
+
+		wait1Msec(GLOBAL_WAITER);
+
+		// MoveIEM(60, FULLPOWER);
+		// moveLiftUp(FULLPOWER);
+		// wait1Msec(200);
+		// stopLift();
+		// wait1Msec(GLOBAL_WAITER);
 		// stopClaw();
+		// moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown + 10);
+		// moveLiftDown(FULLPOWER);
+		// wait1Msec(200);
 		// stopLift();
 
-		// writeDebugStreamLine("1002-1");
+		// closeClaw(FULLPOWER);
+		// wait1Msec(GLOBAL_WAITER);
+		// moveLiftDownAndHold(MIN_LIFT, FULLPOWER);
+		// wait1Msec(200);
 	}
 	else
 	{
@@ -3070,11 +3119,16 @@ bool autoCommon(int coneCount) {
 		// stopLift();
 
 		moveMobileLiftUpToStackAuton(FULLPOWER);
+		wait1Msec(GLOBAL_WAITER);
+		moveLiftDownAndStop(MIN_LIFT, powerliftDown);
+		openClaw(powerClawClose); //for one cone only!
+		wait1Msec(300);
 		stopClaw();
 
 		moveLiftDownAndStop(MIN_LIFT, powerliftDown);
 		moveClawLiftUpAndStop(MID_CLAWLIFT, powerClawLiftUp);
 	}
+
 
 	stopLift();
 
@@ -3107,49 +3161,82 @@ bool autoCommon(int coneCount) {
 	return true;
 }
 
-void autonCone20(int coneCount) {
+void autonCone20(int coneCount, bool leftSide) {
 	int powerToMove = 70;
 
-	bool ret = autoCommon(coneCount);
+	bool ret = autoCommon(coneCount, leftSide);
 	if (!ret){
 		return;
 	}
-
-	wait1Msec(GLOBAL_WAITER + 200);
-	ret = TurnLine(Back, -(powerToMove-25));
-	if (!ret){
-		return;
-	}
-
-	// writeDebugStreamLine("1006");
-
 	wait1Msec(GLOBAL_WAITER + 100);
-	ret = TurnLine(Back, (powerToMove - 35));
-	if (!ret){
-		return;
+
+	if (leftSide) {
+		ret = TurnLine(Back, -(powerToMove-25));
+		if (!ret){
+			return;
+		}
+
+		// writeDebugStreamLine("1006");
+
+		wait1Msec(GLOBAL_WAITER + 100);
+		ret = TurnLine(Back, (powerToMove - 35));
+		if (!ret){
+			return;
+		}
+	}
+	else {
+		ret = TurnLine(Back, (powerToMove-25));
+		if (!ret){
+			return;
+		}
+
+		// writeDebugStreamLine("1006");
+
+		wait1Msec(GLOBAL_WAITER + 100);
+		ret = TurnLine(Back, -(powerToMove - 35));
+		if (!ret){
+			return;
+		}
 	}
 	wait1Msec(GLOBAL_WAITER);
 
 	// writeDebugStreamLine("1007");
 
 	// MoveIEM(490 - 50, -(powerToMove + 10));
-	MoveIEM(490, -(powerToMove + 10)); //this is just right at home, might need to increase at competition
+	if (leftSide) {
+		MoveIEM(490 - 50, -(powerToMove + 10)); //this is just right at home, might need to increase at competition
+	}
+	else {
+		MoveIEM(490 + 50, -(powerToMove + 10));
+	}
 
 	// writeDebugStreamLine("1008");
 
-	wait1Msec(GLOBAL_WAITER + 200);
+	wait1Msec(GLOBAL_WAITER + 100);
 
 	bool useGyro = true;
 
 	if (useGyro){
-		ClearEncoder();
-		// TurnGyroLeft(90);
-		TurnGyro(870, -(powerToMove - 25));
-		// wait1Msec(GLOBAL_WAITER + 200);
-		// int delta = SensorValue[GyroPosition] - turnValue;
-		// TurnGyro(delta, powerToMove);
-		writeDebugStreamLine("Gyro: %d", SensorValue[GyroPosition]);
-		writeDebugStreamLine("Encoder: %d", nMotorEncoder[wheelRight]);
+		if (leftSide) {
+			ClearEncoder();
+			// TurnGyroLeft(90);
+			TurnGyro(870 - 100, -(powerToMove - 25));
+			// wait1Msec(GLOBAL_WAITER + 200);
+			// int delta = SensorValue[GyroPosition] - turnValue;
+			// TurnGyro(delta, powerToMove);
+			writeDebugStreamLine("Gyro: %d", SensorValue[GyroPosition]);
+			writeDebugStreamLine("Encoder: %d", nMotorEncoder[wheelRight]);
+		}
+		else {
+			ClearEncoder();
+			// TurnGyroLeft(90);
+			TurnGyro(870 - 100, (powerToMove - 25));
+			// wait1Msec(GLOBAL_WAITER + 200);
+			// int delta = SensorValue[GyroPosition] - turnValue;
+			// TurnGyro(delta, powerToMove);
+			writeDebugStreamLine("Gyro: %d", SensorValue[GyroPosition]);
+			writeDebugStreamLine("Encoder: %d", nMotorEncoder[wheelRight]);
+		}
 	}
 	else{
 		SensorValue[GyroPosition] = 0;
@@ -3183,14 +3270,14 @@ void autonCone20(int coneCount) {
 	// wait1Msec(GLOBAL_WAITER + 50); don't need this because of moveLiftUp
 
 	moveLiftUp(FULLPOWER);
-	wait1Msec(100);
+	wait1Msec(200);
 	stopLift();
 
 	MoveIEM(mDistaince, mPower);
 	// wait1Msec(GLOBAL_WAITER);
 	// writeDebugStreamLine("1009");
 	moveMobileLiftDown(FULLPOWER);
-	wait1Msec(300);
+	wait1Msec(400);
 	stopMobileLift();
 
 	// moveMobileLiftDownAndStopAuton(HIGHGOAL_MOBILELIFT + 200);
@@ -3212,21 +3299,53 @@ void autonCone20(int coneCount) {
 	MoveHelper(0);
 }
 
-void autonStationary() {
+void autonStationary(bool leftSide) {
 	int powerToMove = 70;
 
 	ClearEncoder();
 
 	closeClaw(40);
 	// wait1Msec(300);
-	MoveHelper(30);
-	moveLiftUpForStationaryGoalAuton(STATIONARY_LIFT);
-	wait1Msec(GLOBAL_WAITER + 100);
+	bool ret = moveLiftUpAndHold(LIFT_PICK_MOBILE - 50, FULLPOWER);
+	if (!ret){
+		return;
+	}
 
-	int distance = nMotorEncoder[wheelRight];
+	holdLift();
 
-	MoveIEM(distance * 8 / 10, -30);
+	ret = MoveLine(Back, powerToMove - 40);
+	if (!ret){
+		return;
+	}
 
+	wait1Msec(GLOBAL_WAITER + 200);
+
+	ret = MoveLineStop(Back, -(powerToMove - 50));
+	if (!ret){
+		return;
+	}
+
+	wait1Msec(GLOBAL_WAITER);
+
+	moveClawLiftDownAndStop(MIN_CLAWLIFT, powerClawLiftDown / 2);
+
+	wait1Msec(GLOBAL_WAITER);
+
+	openClaw(powerClawOpen);
+	wait1Msec(100);
+	openClaw(powerClawClose);
+
+	PushORUpCone(false);
+
+	stopClaw();
+
+	ret = MoveLineStop(Right, -(powerToMove - 44));
+	if (!ret){
+		return;
+	}
+
+	wait1Msec(GLOBAL_WAITER);
+	
 	int turnValue = 870 - 100;
 	ClearEncoder();
 	TurnGyro(turnValue, (powerToMove - 25));
@@ -3247,7 +3366,7 @@ void autonStationary() {
 
 	// writeDebugStreamLine("1001");
 	wait1Msec(300);
-	bool ret = MoveLineStop(Back, powerToMove - 15 - 5);
+	ret = MoveLineStop(Back, powerToMove - 15 - 5);
 	if (!ret){
 		return;
 	}
